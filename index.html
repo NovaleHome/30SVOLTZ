@@ -1240,39 +1240,44 @@ function removeEncontro(idx) {
   renderEncontros(portalReg.encontros);
 }
 
-async function saveAllEncontros() {
+async function saveAll() {
   if (!portalReg) return;
   const btn = document.querySelector('#portal-area > button');
   btn.disabled = true; btn.textContent = '⏳ SALVANDO...';
+
+  const memData = document.getElementById('portal-memorias-data').value;
+  let ok = true;
+
   try {
+    // Salva encontros
     await post({
       action: 'saveEncontros',
       regId: portalReg.id,
       encontros: portalReg.encontros || []
     });
-    document.getElementById('portal-save-msg').style.display = 'block';
-    document.getElementById('portal-save-msg').textContent = '✅ Encontros salvos com sucesso em ' + new Date().toLocaleString('pt-BR');
-    setTimeout(() => document.getElementById('portal-save-msg').style.display = 'none', 4000);
+
+    // Salva memórias se preenchida
+    if (memData) {
+      await post({ action: 'saveMemorias', regId: portalReg.id, datasMemorias: memData });
+      portalReg.datasMemorias = memData;
+      document.getElementById('portal-memorias-saved').style.display = 'block';
+      document.getElementById('portal-memorias-saved').textContent = '✅ Memórias registradas em: ' + fmtDate(memData);
+    }
+
+    const msg = document.getElementById('portal-save-msg');
+    msg.style.display = 'block';
+    msg.textContent = '✅ TUDO SALVO COM SUCESSO — ' + new Date().toLocaleString('pt-BR');
+    setTimeout(() => msg.style.display = 'none', 5000);
+
   } catch(e) {
     showToast('⚠️ Erro ao salvar. Tente novamente.');
   }
-  btn.disabled = false; btn.textContent = '💾 SALVAR TODOS OS ENCONTROS';
+
+  btn.disabled = false; btn.textContent = '💾 SALVAR TODAS AS ATUALIZAÇÕES';
 }
 
-async function saveMemorias() {
-  if (!portalReg) return;
-  const data = document.getElementById('portal-memorias-data').value;
-  if (!data) { showToast('⚠️ Selecione a data das memórias.'); return; }
-  try {
-    await post({ action: 'saveMemorias', regId: portalReg.id, datasMemorias: data });
-    portalReg.datasMemorias = data;
-    document.getElementById('portal-memorias-saved').style.display = 'block';
-    document.getElementById('portal-memorias-saved').textContent = '✅ Memórias registradas em: ' + fmtDate(data);
-    showToast('✅ DATA DAS MEMÓRIAS SALVA!');
-  } catch(e) {
-    showToast('⚠️ Erro ao salvar. Tente novamente.');
-  }
-}
+// Mantida para compatibilidade mas não usada mais diretamente
+async function saveMemorias() { await saveAll(); }
 
 // ════ PHONE MASK ════
 function applyPhoneMask(input) {
@@ -1454,14 +1459,14 @@ function getPhotoSrc(m){
           <input type="datetime-local" id="portal-memorias-data" style="color-scheme:dark;">
         </div>
         <div style="display:flex;align-items:flex-end;padding-bottom:14px;">
-          <button class="btn-primary" style="padding:11px 20px;font-size:13px;" onclick="saveMemorias()">💾 SALVAR</button>
+          <div style="font-size:12px;color:var(--text-muted);font-family:'Barlow Condensed',sans-serif;">Salve pelo botão abaixo</div>
         </div>
       </div>
       <div id="portal-memorias-saved" style="display:none;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:6px;padding:10px 14px;font-size:13px;color:#81C784;margin-top:8px;"></div>
     </div>
 
-    <button class="btn-primary" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);margin-top:8px;" onclick="saveAllEncontros()">💾 SALVAR TODOS OS ENCONTROS</button>
-    <div id="portal-save-msg" style="display:none;margin-top:12px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:6px;padding:10px 14px;font-size:13px;color:#81C784;text-align:center;"></div>
+    <button class="btn-primary" style="margin-top:8px;padding:16px;" onclick="saveAll()">💾 SALVAR TODAS AS ATUALIZAÇÕES</button>
+    <div id="portal-save-msg" style="display:none;margin-top:12px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:6px;padding:12px 16px;font-size:14px;color:#81C784;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;"></div>
   </div>
 </div>
 
