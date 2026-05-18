@@ -982,25 +982,25 @@ function renderPublic(q){
     return;
   }
 
-  grid.innerHTML=list.map(m=>{
-    const isFull=(m.inscritos||0)>=m.vagas;
-    const rem=Math.max(0,m.vagas-(m.inscritos||0));
-    const photo=getPhotoSrc(m);
-    const borderClass=m.sexo==='M'?'photo-border-M':'photo-border-F';
-    const sexLabel=m.sexo==='M'?'Masculino':'Feminino';
-    return `
-      <div class="conf-card${isFull?' full':''}" onclick="${isFull?'':` openReg('${m.id}')`}">
-        <div class="photo-wrap ${borderClass}">
-          <img src="${photo}" alt="${m.name}" loading="lazy" onerror="this.src=avatar('${m.name}','${m.sexo}');">
-          <div class="card-badge${isFull?' esgotado':''}">${isFull?'ESGOTADO':rem+' VAGA'+(rem!==1?'S':'')}</div>
-        </div>
-        <div class="card-stripe"></div>
-        <div class="card-body">
-          <h3>${m.name}</h3>
-          <span class="card-sex-tag ${m.sexo}">${sexLabel}</span>
-          <button class="choose-btn" style="margin-top:12px;"${isFull?' disabled':''}>${isFull?'SEM VAGAS':'// ESCOLHER ESTE CONFIDENTE'}</button>
-        </div>
-      </div>`;
+  grid.innerHTML = list.map(function(m) {
+    var isFull = (m.inscritos||0) >= m.vagas;
+    var rem    = Math.max(0, m.vagas - (m.inscritos||0));
+    var photo  = getPhotoSrc(m);
+    var borderClass = m.sexo === 'M' ? 'photo-border-M' : 'photo-border-F';
+    var sexLabel    = m.sexo === 'M' ? 'Masculino' : 'Feminino';
+    var clickAttr   = isFull ? '' : 'onclick="openReg('' + m.id + '')"';
+    var card = '<div class="conf-card' + (isFull?' full':'') + '" ' + clickAttr + '>';
+    card += '<div class="photo-wrap ' + borderClass + '">';
+    card += '<img src="' + photo + '" alt="' + m.name + '" loading="lazy" onerror="this.src=avatar(\'' + m.name.replace(/'/g,"\'") + '\',\'' + m.sexo + '\')">';
+    card += '<div class="card-badge' + (isFull?' esgotado':'') + '">' + (isFull ? 'ESGOTADO' : rem + ' VAGA' + (rem!==1?'S':'')) + '</div>';
+    card += '</div>';
+    card += '<div class="card-stripe"></div>';
+    card += '<div class="card-body">';
+    card += '<h3>' + m.name + '</h3>';
+    card += '<span class="card-sex-tag ' + m.sexo + '">' + sexLabel + '</span>';
+    card += '<button class="choose-btn" style="margin-top:12px;"' + (isFull?' disabled':'') + '>' + (isFull ? 'SEM VAGAS' : '// ESCOLHER ESTE CONFIDENTE') + '</button>';
+    card += '</div></div>';
+    return card;
   }).join('');
 }
 
