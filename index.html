@@ -604,8 +604,8 @@ async function loadData(showMsg) {
       mentors = json.mentors.filter(m => m.status === 'aprovado').map(m => {
         // Se foto for base64 grande, guarda no localStorage e remove do objeto
         if (m.photo && m.photo.startsWith('data:')) {
-          try { localStorage.setItem('photo_'+m.id, m.photo); } catch(e){}
-          return {...m, photo: localStorage.getItem('photo_'+m.id)||''};
+          savePhoto(m.id, m.photo);
+          return {...m, photo: ''};
         }
         return m;
       });
@@ -613,8 +613,8 @@ async function loadData(showMsg) {
     if (Array.isArray(json.allMentors)) {
       pending = json.allMentors.filter(m => m.status === 'pendente').map(m => {
         if (m.photo && m.photo.startsWith('data:')) {
-          try { localStorage.setItem('photo_'+m.id, m.photo); } catch(e){}
-          return {...m, photo: localStorage.getItem('photo_'+m.id)||''};
+          savePhoto(m.id, m.photo);
+          return {...m, photo: ''};
         }
         return m;
       });
@@ -1135,13 +1135,38 @@ function avatar(name,sexo){
   return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
 }
 
+function savePhoto(id, data) {
+  try {
+    // Divide em pedaços de 500KB para evitar limite do localStorage
+    const CHUNK = 500000;
+    const parts = Math.ceil(data.length / CHUNK);
+    localStorage.setItem('photo_parts_'+id, parts);
+    for (let i=0; i<parts; i++) {
+      localStorage.setItem('photo_'+id+'_'+i, data.slice(i*CHUNK, (i+1)*CHUNK));
+    }
+  } catch(e) {}
+}
+
+function loadPhoto(id) {
+  try {
+    const parts = parseInt(localStorage.getItem('photo_parts_'+id)||'0');
+    if (!parts) {
+      // Tenta formato antigo (chave simples)
+      return localStorage.getItem('photo_'+id)||'';
+    }
+    let data = '';
+    for (let i=0; i<parts; i++) {
+      data += localStorage.getItem('photo_'+id+'_'+i)||'';
+    }
+    return data;
+  } catch(e) { return ''; }
+}
+
 function getPhotoSrc(m){
   if(!m) return avatar('?','');
-  // Tenta localStorage primeiro (base64 salvo anteriormente)
-  try {
-    const cached = localStorage.getItem('photo_'+m.id);
-    if(cached && cached.trim() !== '') return cached;
-  } catch(e){}
+  // Tenta localStorage (foto em cache)
+  const cached = loadPhoto(m.id);
+  if(cached && cached.trim() !== '') return cached;
   // Drive URL ou base64 no objeto
   if(m.photo && m.photo.trim() !== '') return m.photo;
   return avatar(m.name, m.sexo);
