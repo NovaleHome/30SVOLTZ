@@ -306,6 +306,7 @@
     <div class="footer-brand">30 <span>SEMANAS</span> VOLTZ</div>
     <div style="display:flex;gap:16px;">
       <a href="#" onclick="showPage('login')">//  ACESSO ADMINISTRATIVO</a>
+      <a href="#" onclick="showPage('portal')">//  ÁREA DO CONFIDENTE</a>
     </div>
   </footer>
 </div>
@@ -859,39 +860,73 @@ async function submitRegistration(){
   var mensagem = document.getElementById('reg-msg').value.trim();
   regSexo      = partDadosCarregados.sexo;
 
-  const mentor=mentors.find(m=>m.id===currentId);
-  if(!mentor) return;
+  var mentor = (window._mentorList || mentors).find(function(m){ return m.id === currentId; });
+  if (!mentor) { showToast('⚠️ Erro ao encontrar confidente. Tente novamente.'); return; }
 
   // Validação de sexo
-  if(regSexo!==mentor.sexo){
-    showToast('💛 Você precisa escolher um confidente do mesmo sexo!');
+  if (regSexo !== mentor.sexo) {
     closeModal('register-modal');
-    // Mostra modal de sexo errado
     document.getElementById('wrong-sex-modal').classList.add('open');
     return;
   }
 
-  const btn=document.getElementById('reg-btn');
-  btn.disabled=true;btn.textContent='⏳ ENVIANDO...';
+  var btn = document.getElementById('reg-btn');
+  btn.disabled = true; btn.textContent = '⏳ VERIFICANDO...';
 
-  const reg={
-    action:'addRegistration',
-    id:'R'+Date.now(),
-    mentorId:mentor.id, mentorName:mentor.name, mentorWhatsapp:mentor.whatsapp,
-    nome, email, telefone, sexo:regSexo, mensagem,
-    date:new Date().toISOString(),
-    notified:false, notifiedAt:''
-  };
+  try {
+    // 1. Verifica se já tem confidente
+    var dupRes = await fetch(SHEETS_URL + '?action=checkDuplicado&codigoPart=' + encodeURIComponent(partDadosCarregados.codigo) + '&cb=' + Date.now());
+    var dupJson = await dupRes.json();
+    if (dupJson.jaInscrito) {
+      btn.disabled = false; btn.textContent = '✅ CONFIRMAR INSCRIÇÃO';
+      closeModal('register-modal');
+      showToast('⚠️ Você já possui um confidente! Cada participante pode ter apenas um.');
+      return;
+    }
 
-  try{await post(reg);await loadData(false);}
-  catch(e){
-    registrations.push({...reg});
-    const idx=mentors.findIndex(m=>m.id===mentor.id);
-    if(idx>-1) mentors[idx].inscritos=(mentors[idx].inscritos||0)+1;
-    backup();renderPublic();
+    // 2. Verifica vaga em tempo real
+    btn.textContent = '⏳ VERIFICANDO VAGA...';
+    var vagaRes = await fetch(SHEETS_URL + '?action=checkVaga&mentorId=' + mentor.id + '&cb=' + Date.now());
+    var vagaJson = await vagaRes.json();
+    if (!vagaJson.temVaga) {
+      btn.disabled = false; btn.textContent = '✅ CONFIRMAR INSCRIÇÃO';
+      closeModal('register-modal');
+      await loadData(false);
+      document.getElementById('sem-vaga-modal').classList.add('open');
+      return;
+    }
+
+    // 3. Gera código AGR e salva
+    btn.textContent = '⏳ ENVIANDO...';
+    var codigoAgr = 'AGR-' + Math.random().toString(36).substring(2,6).toUpperCase();
+    var reg = {
+      action: 'addRegistration',
+      id: 'R' + Date.now(),
+      codigo: codigoAgr,
+      codigoPart: partDadosCarregados.codigo,
+      mentorId: mentor.id, mentorName: mentor.name, mentorWhatsapp: mentor.whatsapp,
+      nome: nome, email: email, telefone: telefone, sexo: regSexo, mensagem: mensagem,
+      date: new Date().toISOString(),
+      notified: false, notifiedAt: ''
+    };
+
+    var result = await post(reg);
+    if (result.semVaga) {
+      btn.disabled = false; btn.textContent = '✅ CONFIRMAR INSCRIÇÃO';
+      closeModal('register-modal');
+      await loadData(false);
+      document.getElementById('sem-vaga-modal').classList.add('open');
+      return;
+    }
+    await loadData(false);
+
+  } catch(e) {
+    showToast('⚠️ Erro ao confirmar inscrição. Tente novamente.');
+    btn.disabled = false; btn.textContent = '✅ CONFIRMAR INSCRIÇÃO';
+    return;
   }
 
-  btn.disabled=false;btn.textContent='✅ CONFIRMAR INSCRIÇÃO';
+  btn.disabled = false; btn.textContent = '✅ CONFIRMAR INSCRIÇÃO';
   closeModal('register-modal');
   document.getElementById('success-modal').classList.add('open');
 }
@@ -912,6 +947,7 @@ async function notifyConfidente(regId){
     `*Sexo:* ${reg.sexo==='M'?'Masculino':'Feminino'}\n`+
     (reg.mensagem?`*Mensagem:* ${reg.mensagem}\n`:'')+
     `*Inscrição:* ${regDt}\n\n`+
+    `*Código do Agraciado (para registrar encontros):* ${reg.codigo}\n\n`+
     `// Confie em uma nova direção`
   );
 
@@ -1230,6 +1266,109 @@ async function submitParticipante() {
   btn.disabled = false; btn.textContent = '✅ REALIZAR CADASTRO';
 }
 
+
+// ════ PORTAL DO CONFIDENTE ════
+var portalReg = null;
+
+async function portalLogin() {
+  var code = document.getElementById('portal-code').value.trim().toUpperCase();
+  if (!code) return;
+  var btn = document.getElementById('portal-login-btn');
+  btn.disabled = true; btn.textContent = '⏳ VERIFICANDO...';
+  document.getElementById('portal-error').style.display = 'none';
+  try {
+    var res = await fetch(SHEETS_URL + '?action=getAgraciado&codigo=' + encodeURIComponent(code) + '&cb=' + Date.now());
+    var json = await res.json();
+    if (json.status === 'ok' && json.agraciado) {
+      portalReg = json.agraciado;
+      document.getElementById('portal-login').style.display = 'none';
+      document.getElementById('portal-area').style.display = 'block';
+      document.getElementById('portal-nome-agraciado').textContent = portalReg.nome;
+      document.getElementById('portal-nome-confidente').textContent = portalReg.mentorName;
+      renderEncontros(portalReg.encontros || []);
+      if (portalReg.datasMemorias) {
+        lockMemorias(portalReg.datasMemorias);
+      }
+    } else {
+      document.getElementById('portal-error').style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('portal-error').style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'ACESSAR';
+}
+
+function renderEncontros(encontros) {
+  var list = document.getElementById('portal-encontros-list');
+  if (!encontros || encontros.length === 0) {
+    list.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">Nenhum encontro registrado ainda. Clique em + para adicionar.</p>';
+    return;
+  }
+  var items = '';
+  for (var i = 0; i < encontros.length; i++) {
+    var val = encontros[i].dataHora || '';
+    items += '<div style="display:flex;align-items:center;gap:12px;background:var(--dark3);border:1px solid var(--border);border-radius:6px;padding:12px 14px;">';
+    items += '<div style="font-size:22px;color:var(--orange);min-width:32px;font-weight:bold;">' + (i+1) + '</div>';
+    items += '<div style="flex:1;">';
+    items += '<label style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:4px;">Encontro ' + (i+1) + '</label>';
+    items += '<input type="datetime-local" value="' + val + '" data-idx="' + i + '" onchange="updateEncontro(this)" style="background:var(--dark);border:1px solid var(--border);border-radius:4px;padding:8px 12px;color:var(--text);font-size:14px;width:100%;outline:none;color-scheme:dark;">';
+    items += '</div>';
+    items += '<button onclick="removeEncontro(' + i + ')" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);width:30px;height:30px;border-radius:4px;cursor:pointer;font-size:14px;">✕</button>';
+    items += '</div>';
+  }
+  list.innerHTML = items;
+}
+
+function addEncontroField() {
+  if (!portalReg) return;
+  if (!portalReg.encontros) portalReg.encontros = [];
+  portalReg.encontros.push({ dataHora: '' });
+  renderEncontros(portalReg.encontros);
+  var list = document.getElementById('portal-encontros-list');
+  if (list.lastElementChild) list.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function updateEncontro(input) {
+  var idx = parseInt(input.getAttribute('data-idx'));
+  if (portalReg && portalReg.encontros) portalReg.encontros[idx].dataHora = input.value;
+}
+
+function removeEncontro(idx) {
+  if (!portalReg || !portalReg.encontros) return;
+  portalReg.encontros.splice(idx, 1);
+  renderEncontros(portalReg.encontros);
+}
+
+function lockMemorias(dataISO) {
+  document.getElementById('portal-memorias-input-area').style.display = 'none';
+  var saved = document.getElementById('portal-memorias-saved');
+  saved.style.display = 'block';
+  saved.textContent = '✅ MEMÓRIAS REGISTRADAS EM: ' + fmtDate(dataISO);
+}
+
+async function saveAll() {
+  if (!portalReg) return;
+  var btn = document.querySelector('#portal-area > button');
+  btn.disabled = true; btn.textContent = '⏳ SALVANDO...';
+  var memData = document.getElementById('portal-memorias-data').value;
+  try {
+    await post({ action: 'saveEncontros', regId: portalReg.id, encontros: portalReg.encontros || [] });
+    if (memData && !portalReg.datasMemorias) {
+      await post({ action: 'saveMemorias', regId: portalReg.id, datasMemorias: memData });
+      portalReg.datasMemorias = memData;
+      lockMemorias(memData);
+    }
+    var msg = document.getElementById('portal-save-msg');
+    msg.style.display = 'block';
+    msg.textContent = '✅ SALVO COM SUCESSO — ' + new Date().toLocaleString('pt-BR');
+    setTimeout(function() { msg.style.display = 'none'; }, 5000);
+  } catch(e) {
+    showToast('⚠️ Erro ao salvar. Tente novamente.');
+  }
+  btn.disabled = false; btn.textContent = '💾 SALVAR ATUALIZAÇÕES';
+}
+
+
 function fmtDate(d){
   if(!d) return '—';
   try{
@@ -1252,6 +1391,7 @@ function buildWALink(r){
     `*Sexo:* ${r.sexo==='M'?'Masculino':'Feminino'}\n`+
     (r.mensagem?`*Mensagem:* ${r.mensagem}\n`:'')+
     `*Inscrição:* ${dtStr}\n\n`+
+    `*Código do Agraciado (para registrar encontros):* ${r.codigo||''}\n\n`+
     `// Confie em uma nova direção`
   );
   return `https://wa.me/${wa}?text=${msg}`;
@@ -1355,6 +1495,66 @@ function getPhotoSrc(m){
     <h2 style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:12px;">VAGA PREENCHIDA!</h2>
     <p style="color:var(--text-muted);line-height:1.7;margin-bottom:24px;">Infelizmente outra pessoa preencheu a última vaga deste confidente. Por favor, escolha outro confidente disponível.</p>
     <button class="btn-primary" onclick="closeModal('sem-vaga-modal')">ESCOLHER OUTRO</button>
+  </div>
+</div>
+
+
+<!-- ═══════════════ PORTAL DO CONFIDENTE ═══════════════ -->
+<div id="page-portal" class="page">
+  <div class="cadastro-header">
+    <div class="brand-logo"><div class="brand-badge">CICLO</div><div class="brand-name">30 <span>SEMANAS</span> VOLTZ</div></div>
+    <a href="#" class="header-btn" onclick="showPage('public')">← VOLTAR</a>
+  </div>
+
+  <!-- LOGIN PORTAL -->
+  <div id="portal-login" style="min-height:calc(100vh - 70px);display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div class="login-box" style="max-width:440px;">
+      <div class="login-logo">30<span>S</span></div>
+      <div class="login-sub">// Área do Confidente</div>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:24px;line-height:1.6;">
+        Digite o código <strong style="color:var(--orange);">AGR-XXXX</strong> do agraciado enviado no seu WhatsApp para registrar os encontros.
+      </p>
+      <div class="form-group">
+        <label>Código do Agraciado</label>
+        <input type="text" id="portal-code" placeholder="AGR-XXXX"
+          style="text-transform:uppercase;letter-spacing:4px;font-size:22px;text-align:center;font-family:'Bebas Neue',sans-serif;"
+          maxlength="8" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <button class="btn-primary" id="portal-login-btn" onclick="portalLogin()">ACESSAR</button>
+      <div class="login-error" id="portal-error" style="display:none;">Código inválido. Verifique e tente novamente.</div>
+    </div>
+  </div>
+
+  <!-- ÁREA DE ENCONTROS -->
+  <div id="portal-area" style="display:none;max-width:700px;margin:0 auto;padding:40px;">
+    <div style="margin-bottom:28px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:3px;color:var(--orange);margin-bottom:4px;">// AGRACIADO</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:2px;" id="portal-nome-agraciado">—</div>
+      <div style="font-size:13px;color:var(--text-muted);">Confidente: <span id="portal-nome-confidente" style="color:var(--text);"></span></div>
+    </div>
+
+    <!-- ENCONTROS -->
+    <div class="admin-card" style="margin-bottom:20px;">
+      <div class="admin-card-title">REGISTRO DE ENCONTROS</div>
+      <div id="portal-encontros-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;"></div>
+      <button class="btn-primary" style="width:auto;padding:10px 24px;font-size:13px;" onclick="addEncontroField()">+ ADICIONAR ENCONTRO</button>
+    </div>
+
+    <!-- MEMÓRIAS -->
+    <div class="admin-card" style="margin-bottom:20px;">
+      <div class="admin-card-title">ESCRITA DAS MEMÓRIAS</div>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">Registre a data em que o agraciado leu suas memórias com você. Após salvar não poderá ser alterado.</p>
+      <div id="portal-memorias-input-area">
+        <div class="form-group">
+          <label>Data da Leitura das Memórias</label>
+          <input type="datetime-local" id="portal-memorias-data" style="color-scheme:dark;">
+        </div>
+      </div>
+      <div id="portal-memorias-saved" style="display:none;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:6px;padding:12px 16px;font-size:14px;color:#81C784;margin-top:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;"></div>
+    </div>
+
+    <button class="btn-primary" style="margin-top:8px;padding:16px;" onclick="saveAll()">💾 SALVAR ATUALIZAÇÕES</button>
+    <div id="portal-save-msg" style="display:none;margin-top:12px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:6px;padding:12px 16px;font-size:14px;color:#81C784;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;"></div>
   </div>
 </div>
 
