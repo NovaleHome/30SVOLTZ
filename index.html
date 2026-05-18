@@ -982,7 +982,6 @@ function renderPublic(q){
     return;
   }
 
-  // Store mentors in window for card clicks
   window._mentorList = list;
   var cards = '';
   for (var i=0; i<list.length; i++) {
@@ -990,29 +989,23 @@ function renderPublic(q){
     var isFull = (m.inscritos||0) >= m.vagas;
     var rem = Math.max(0, m.vagas - (m.inscritos||0));
     var photo = getPhotoSrc(m);
-    var borderClass = m.sexo === 'M' ? 'photo-border-M' : 'photo-border-F';
-    var sexLabel = m.sexo === 'M' ? 'Masculino' : 'Feminino';
-    var vagasTxt = isFull ? 'ESGOTADO' : (rem + ' VAGA' + (rem!==1?'S':''));
-    var btnTxt = isFull ? 'SEM VAGAS' : '// ESCOLHER ESTE CONFIDENTE';
-    cards += '<div class="conf-card' + (isFull?' full':'') + '" data-mid="' + m.id + '">';
-    cards += '<div class="photo-wrap ' + borderClass + '">';
+    var bc = m.sexo === 'M' ? 'photo-border-M' : 'photo-border-F';
+    var sl = m.sexo === 'M' ? 'Masculino' : 'Feminino';
+    cards += '<div class="conf-card' + (isFull?' full':'') + '">';
+    cards += '<div class="photo-wrap ' + bc + '">';
     cards += '<img src="' + photo + '" alt="" loading="lazy">';
-    cards += '<div class="card-badge' + (isFull?' esgotado':'') + '">' + vagasTxt + '</div>';
-    cards += '</div>';
-    cards += '<div class="card-stripe"></div>';
-    cards += '<div class="card-body">';
+    cards += '<div class="card-badge' + (isFull?' esgotado':'') + '">' + (isFull?'ESGOTADO':rem+' VAGA'+(rem!==1?'S':'')) + '</div>';
+    cards += '</div><div class="card-stripe"></div><div class="card-body">';
     cards += '<h3>' + m.name + '</h3>';
-    cards += '<span class="card-sex-tag ' + m.sexo + '">' + sexLabel + '</span>';
-    cards += '<button class="choose-btn" style="margin-top:12px;"' + (isFull?' disabled':'') + '>' + btnTxt + '</button>';
+    cards += '<span class="card-sex-tag ' + m.sexo + '">' + sl + '</span>';
+    if (!isFull) {
+      cards += '<button class="choose-btn" style="margin-top:12px;" onclick="abrirModal('' + i + '')">//  ESCOLHER ESTE CONFIDENTE</button>';
+    } else {
+      cards += '<button class="choose-btn" style="margin-top:12px;" disabled>SEM VAGAS</button>';
+    }
     cards += '</div></div>';
   }
   grid.innerHTML = cards;
-  // Attach click events after DOM update
-  grid.querySelectorAll('.conf-card:not(.full)').forEach(function(card) {
-    card.addEventListener('click', function() {
-      openReg(this.getAttribute('data-mid'));
-    });
-  });
 }
 
 function filterCards(){renderPublic(document.getElementById('search-input').value);}
@@ -1128,22 +1121,12 @@ function renderAdmin(){
 }
 
 // ════ MODAL ════
-function openReg(id){
-  currentId = id;
-  // Find mentor - use window._mentorList as fallback
-  const allM = (mentors && mentors.length > 0) ? mentors : (window._mentorList || []);
-  const m = allM.find(x => x.id === id);
-
-  // Set mentor info if found
-  if (m) {
-    document.getElementById('modal-name').textContent = m.name;
-    document.getElementById('modal-photo').src = getPhotoSrc(m);
-  } else {
-    document.getElementById('modal-name').textContent = '...';
-    document.getElementById('modal-photo').src = '';
-  }
-
-  // Reset to step1
+function abrirModal(idx) {
+  var m = window._mentorList[parseInt(idx)];
+  if (!m) return;
+  currentId = m.id;
+  document.getElementById('modal-name').textContent = m.name;
+  document.getElementById('modal-photo').src = getPhotoSrc(m);
   document.getElementById('reg-step1').style.display = 'block';
   document.getElementById('reg-step2').style.display = 'none';
   document.getElementById('reg-codigo-part').value = '';
@@ -1151,10 +1134,10 @@ function openReg(id){
   document.getElementById('reg-msg').value = '';
   partDadosCarregados = null;
   regSexo = '';
-
-  // Open modal
   document.getElementById('register-modal').classList.add('open');
 }
+
+function openReg(id) { abrirModal(id); }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
 // ════ POST ════
