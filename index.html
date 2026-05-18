@@ -332,7 +332,7 @@
         </div>
         <div class="form-group">
           <label>Telefone / WhatsApp *</label>
-          <input type="text" id="cc-tel" placeholder="(99) 99999-9999">
+          <input type="text" id="cc-tel" placeholder="(99) 99999-9999" maxlength="15" oninput="applyPhoneMask(this)">
         </div>
       </div>
 
@@ -529,7 +529,7 @@
     <div class="form-group"><label>Nome completo *</label><input type="text" id="reg-nome" placeholder="Seu nome completo"></div>
     <div class="form-row">
       <div class="form-group"><label>Email *</label><input type="email" id="reg-email" placeholder="seu@email.com"></div>
-      <div class="form-group"><label>WhatsApp *</label><input type="text" id="reg-tel" placeholder="(11) 99999-9999"></div>
+      <div class="form-group"><label>WhatsApp *</label><input type="text" id="reg-tel" placeholder="(99) 99999-9999" maxlength="15" oninput="applyPhoneMask(this)"></div>
     </div>
     <div class="form-group">
       <label>Sexo *</label>
@@ -586,64 +586,33 @@ let photoBase64Conf = '';
 
 // ════ BOOT ════
 window.addEventListener('DOMContentLoaded', () => {
-  // Limpa cache para sempre buscar dados frescos do Sheets
-  localStorage.removeItem('m_bkp');
-  localStorage.removeItem('p_bkp');
-  localStorage.removeItem('r_bkp');
   setupPhoneMasks();
   loadData(false);
 });
 
 async function loadData(showMsg) {
   showLoading(showMsg ? 'Sincronizando...' : 'Carregando confidentes...');
-
-  // Carrega cache local SEMPRE — independente de estar vazio ou não
-  const localMentors = JSON.parse(localStorage.getItem('m_bkp') || '[]');
-  const localPending = JSON.parse(localStorage.getItem('p_bkp') || '[]');
-  const localRegs    = JSON.parse(localStorage.getItem('r_bkp') || '[]');
-  mentors       = localMentors;
-  pending       = localPending;
-  registrations = localRegs;
-  hideLoading();
-  renderPublic();
-  if (document.getElementById('page-admin').classList.contains('active')) renderAdmin();
-
-  // Depois busca do Sheets em background com timeout de 10s
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const tid = setTimeout(() => controller.abort(), 20000);
     const res  = await fetch(SHEETS_URL + '?action=getData&cb=' + Date.now(), { signal: controller.signal });
-    clearTimeout(timeout);
-    const json = await res.json();
+    clearTimeout(tid);
+    const text = await res.text();
+    const json = JSON.parse(text);
 
-    let updated = false;
-    if (Array.isArray(json.mentors)) {
-      mentors = json.mentors.filter(m => m.status === 'aprovado');
-      updated = true;
-    }
-    if (Array.isArray(json.allMentors)) {
-      pending = json.allMentors.filter(m => m.status === 'pendente');
-    }
-    if (Array.isArray(json.registrations)) {
-      registrations = json.registrations;
-    }
-
-    if (updated) {
-      localStorage.setItem('m_bkp', JSON.stringify(mentors));
-      localStorage.setItem('p_bkp', JSON.stringify(pending));
-      localStorage.setItem('r_bkp', JSON.stringify(registrations));
-      if (showMsg) showToast('✅ DADOS ATUALIZADOS!');
-    }
+    if (Array.isArray(json.mentors))       mentors       = json.mentors.filter(m => m.status === 'aprovado');
+    if (Array.isArray(json.allMentors))    pending       = json.allMentors.filter(m => m.status === 'pendente');
+    if (Array.isArray(json.registrations)) registrations = json.registrations;
+    if (showMsg) showToast('✅ DADOS ATUALIZADOS!');
   } catch(e) {
-    if (!localMentors.length) {
-      showToast('⚠️ Sem conexão com o servidor. Tente novamente.');
-    }
+    showToast('⚠️ Erro ao carregar. Verifique a conexão.');
   }
-
   hideLoading();
   renderPublic();
   if (document.getElementById('page-admin').classList.contains('active')) renderAdmin();
 }
+
+
 
 function showLoading(msg){document.getElementById('loading-msg').textContent=msg;document.getElementById('loading-screen').classList.remove('hidden');}
 function hideLoading(){document.getElementById('loading-screen').classList.add('hidden');}
@@ -703,16 +672,33 @@ function handlePhotoConf(input){
   reader.onload=e=>{
     const img=new Image();
     img.onload=()=>{
-      const MAX=350;let w=img.width,h=img.height;
+      const MAX=400;let w=img.width,h=img.height;
       if(w>h&&w>MAX){h=Math.round(h*MAX/w);w=MAX;}else if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}
       const c=document.createElement('canvas');c.width=w;c.height=h;
       c.getContext('2d').drawImage(img,0,0,w,h);
-      photoBase64Conf=c.toDataURL('image/jpeg',0.65);
+      const base64=c.toDataURL('image/jpeg',0.7);
+      // Mostra preview imediato
       const prev=document.getElementById('photo-preview-conf');
-      prev.src=photoBase64Conf;prev.style.display='block';
+      prev.src=base64;prev.style.display='block';
       document.getElementById('photo-placeholder-conf').style.display='none';
+      // Guarda base64 temporariamente — será enviado ao Drive no submit
+      photoBase64Conf=base64;
     };img.src=e.target.result;
   };reader.readAsDataURL(file);
+}
+
+async function uploadPhotoToDrive(base64, name) {
+  try {
+    const ext = 'jpg';
+    const res = await fetch(SHEETS_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'text/plain'},
+      body: JSON.stringify({action:'uploadPhoto', base64, name, ext})
+    });
+    const json = await res.json();
+    if (json.status === 'ok') return json.url;
+  } catch(e) {}
+  return base64; // fallback: usa base64 se Drive falhar
 }
 
 // ════ SUBMIT CONFIDENTE ════
@@ -732,13 +718,22 @@ async function submitConfidente(){
   if(!confSexo){showToast('⚠️ SELECIONE O SEXO');return;}
 
   const btn=document.getElementById('cc-btn');
-  btn.disabled=true;btn.textContent='⏳ ENVIANDO...';
+  btn.disabled=true;btn.textContent='⏳ Enviando foto...';
+
+  // Faz upload da foto para o Drive e obtém URL
+  let photoUrl = '';
+  if (photoBase64Conf) {
+    photoUrl = await uploadPhotoToDrive(photoBase64Conf, nome.replace(/\s+/g,'_')+'_'+Date.now());
+    // Se retornou base64 (fallback), não salva no payload para não travar
+    if (photoUrl && photoUrl.startsWith('data:')) photoUrl = '';
+  }
+  btn.textContent='⏳ Salvando...';
 
   const payload={
     action:'addConfidente',
     id:'C'+Date.now(),
     name:nome, whatsapp:tel, sexo:confSexo, vagas, desc,
-    photo:photoBase64Conf, inscritos:0, status:'pendente',
+    photo:photoUrl, inscritos:0, status:'pendente',
     ciclos, ultimoCiclo:ultCiclo, discipulador:disc, leuMemorias:leuMem,
     treinConf:trConf, treinMem:trMem,
     createdAt:new Date().toISOString()
