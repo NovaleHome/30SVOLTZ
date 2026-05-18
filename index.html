@@ -600,8 +600,25 @@ async function loadData(showMsg) {
     const text = await res.text();
     const json = JSON.parse(text);
 
-    if (Array.isArray(json.mentors))       mentors       = json.mentors.filter(m => m.status === 'aprovado');
-    if (Array.isArray(json.allMentors))    pending       = json.allMentors.filter(m => m.status === 'pendente');
+    if (Array.isArray(json.mentors)) {
+      mentors = json.mentors.filter(m => m.status === 'aprovado').map(m => {
+        // Se foto for base64 grande, guarda no localStorage e remove do objeto
+        if (m.photo && m.photo.startsWith('data:')) {
+          try { localStorage.setItem('photo_'+m.id, m.photo); } catch(e){}
+          return {...m, photo: localStorage.getItem('photo_'+m.id)||''};
+        }
+        return m;
+      });
+    }
+    if (Array.isArray(json.allMentors)) {
+      pending = json.allMentors.filter(m => m.status === 'pendente').map(m => {
+        if (m.photo && m.photo.startsWith('data:')) {
+          try { localStorage.setItem('photo_'+m.id, m.photo); } catch(e){}
+          return {...m, photo: localStorage.getItem('photo_'+m.id)||''};
+        }
+        return m;
+      });
+    }
     if (Array.isArray(json.registrations)) registrations = json.registrations;
     if (showMsg) showToast('✅ DADOS ATUALIZADOS!');
   } catch(e) {
@@ -901,13 +918,13 @@ function renderPublic(q){
   grid.innerHTML=list.map(m=>{
     const isFull=(m.inscritos||0)>=m.vagas;
     const rem=Math.max(0,m.vagas-(m.inscritos||0));
-    const photo=m.photo||avatar(m.name,m.sexo);
+    const photo=getPhotoSrc(m);
     const borderClass=m.sexo==='M'?'photo-border-M':'photo-border-F';
     const sexLabel=m.sexo==='M'?'Masculino':'Feminino';
     return `
       <div class="conf-card${isFull?' full':''}" onclick="${isFull?'':` openReg('${m.id}')`}">
         <div class="photo-wrap ${borderClass}">
-          <img src="${photo}" alt="${m.name}" loading="lazy" onerror="this.src='${avatar(m.name,m.sexo)}'">
+          <img src="${photo}" alt="${m.name}" loading="lazy" onerror="this.src=avatar('${m.name}','${m.sexo}');">
           <div class="card-badge${isFull?' esgotado':''}">${isFull?'ESGOTADO':rem+' VAGA'+(rem!==1?'S':'')}</div>
         </div>
         <div class="card-stripe"></div>
@@ -944,10 +961,10 @@ function renderAdmin(){
   pendingEl.innerHTML=pending.length===0
     ?'<p style="color:var(--text-muted);font-size:14px;">Nenhum cadastro pendente. ✅</p>'
     :pending.map(m=>{
-      const photo=m.photo||avatar(m.name,m.sexo);
+      const photo=getPhotoSrc(m);
       return `
         <div class="pending-item">
-          <img src="${photo}" onerror="this.src='${avatar(m.name,m.sexo)}'">
+          <img src="${photo}" onerror="this.src=avatar('${m.name}','${m.sexo}');">
           <div class="pi-info">
             <div class="pi-name">${m.name} <span class="card-sex-tag ${m.sexo}" style="vertical-align:middle;">${m.sexo==='M'?'Masculino':'Feminino'}</span></div>
             <div class="pi-meta">
@@ -1018,7 +1035,7 @@ function openReg(id){
   const m=mentors.find(x=>x.id===id);if(!m)return;
   currentId=id;
   document.getElementById('modal-name').textContent=m.name;
-  document.getElementById('modal-photo').src=m.photo||avatar(m.name,m.sexo);
+  document.getElementById('modal-photo').src=getPhotoSrc(m);
   ['reg-nome','reg-email','reg-tel','reg-msg'].forEach(id=>document.getElementById(id).value='');
   regSexo='';
   ['reg-sex-M','reg-sex-F'].forEach(id=>document.getElementById(id).className='sex-opt');
@@ -1111,11 +1128,23 @@ function buildWALink(r){
 }
 
 function avatar(name,sexo){
-  const ini=(name||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  const ini=(name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
   const c=sexo==='F'?'%23E91E63':'%231B6B2F';
   const fill=sexo==='F'?'%23F48FB1':'%237FD98F';
   const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><rect width='200' height='200' fill='${c}' opacity='0.25'/><text x='50%' y='54%' dominant-baseline='middle' text-anchor='middle' font-size='80' font-family='Georgia,serif' fill='${fill}'>${ini}</text></svg>`;
-  return`data:image/svg+xml,${svg}`;
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+
+function getPhotoSrc(m){
+  if(!m) return avatar('?','');
+  // Tenta localStorage primeiro (base64 salvo anteriormente)
+  try {
+    const cached = localStorage.getItem('photo_'+m.id);
+    if(cached && cached.trim() !== '') return cached;
+  } catch(e){}
+  // Drive URL ou base64 no objeto
+  if(m.photo && m.photo.trim() !== '') return m.photo;
+  return avatar(m.name, m.sexo);
 }
 </script>
 
