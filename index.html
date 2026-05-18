@@ -846,23 +846,41 @@ async function submitRegistration(){
   }
 
   const btn=document.getElementById('reg-btn');
-  btn.disabled=true;btn.textContent='⏳ ENVIANDO...';
+  btn.disabled=true;btn.textContent='⏳ VERIFICANDO VAGA...';
 
-  const reg={
-    action:'addRegistration',
-    id:'R'+Date.now(),
-    mentorId:mentor.id, mentorName:mentor.name, mentorWhatsapp:mentor.whatsapp,
-    nome, email, telefone, sexo:regSexo, mensagem,
-    date:new Date().toISOString(),
-    notified:false, notifiedAt:''
-  };
+  try {
+    // Verifica vaga em tempo real no Sheets ANTES de salvar
+    const checkRes = await fetch(SHEETS_URL + '?action=checkVaga&mentorId=' + mentor.id + '&cb=' + Date.now());
+    const checkJson = await checkRes.json();
 
-  try{await post(reg);await loadData(false);}
-  catch(e){
-    registrations.push({...reg});
-    const idx=mentors.findIndex(m=>m.id===mentor.id);
-    if(idx>-1) mentors[idx].inscritos=(mentors[idx].inscritos||0)+1;
-    backup();renderPublic();
+    if (!checkJson.temVaga) {
+      // Vaga preenchida por outra pessoa enquanto preenchia o formulário
+      btn.disabled=false;btn.textContent='✅ CONFIRMAR INSCRIÇÃO';
+      closeModal('register-modal');
+      await loadData(false); // Atualiza para mostrar esgotado
+      // Mostra modal de sem vaga
+      document.getElementById('sem-vaga-modal').classList.add('open');
+      return;
+    }
+
+    btn.textContent='⏳ ENVIANDO...';
+
+    const reg={
+      action:'addRegistration',
+      id:'R'+Date.now(),
+      mentorId:mentor.id, mentorName:mentor.name, mentorWhatsapp:mentor.whatsapp,
+      nome, email, telefone, sexo:regSexo, mensagem,
+      date:new Date().toISOString(),
+      notified:false, notifiedAt:''
+    };
+
+    await post(reg);
+    await loadData(false);
+
+  } catch(e) {
+    showToast('⚠️ Erro ao confirmar inscrição. Tente novamente.');
+    btn.disabled=false;btn.textContent='✅ CONFIRMAR INSCRIÇÃO';
+    return;
   }
 
   btn.disabled=false;btn.textContent='✅ CONFIRMAR INSCRIÇÃO';
@@ -1173,6 +1191,19 @@ function getPhotoSrc(m){
   return avatar(m.name, m.sexo);
 }
 </script>
+
+<!-- MODAL SEM VAGA -->
+<div class="modal-overlay" id="sem-vaga-modal">
+  <div class="modal" style="text-align:center;max-width:420px;">
+    <div class="success-icon">😔</div>
+    <h2 style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:12px;">VAGA PREENCHIDA!</h2>
+    <p style="color:var(--text-muted);line-height:1.7;margin-bottom:24px;">
+      Infelizmente outra pessoa preencheu a última vaga deste confidente enquanto você preenchia o formulário.<br><br>
+      Por favor, escolha outro confidente disponível. 🙏
+    </p>
+    <button class="btn-primary" onclick="closeModal('sem-vaga-modal')">ESCOLHER OUTRO CONFIDENTE</button>
+  </div>
+</div>
 
 <!-- MODAL SEXO ERRADO -->
 <div class="modal-overlay" id="wrong-sex-modal">
