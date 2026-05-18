@@ -458,6 +458,7 @@
       <button class="nav-btn active" onclick="switchTab('tab-pending',this)">⏳ PENDENTES <span id="pending-count-badge"></span></button>
       <button class="nav-btn" onclick="switchTab('tab-conf',this)">🎯 CONFIDENTES</button>
       <button class="nav-btn" onclick="switchTab('tab-regs',this)">📋 INSCRIÇÕES</button>
+      <button class="nav-btn" onclick="switchTab('tab-encontros',this)">📅 ENCONTROS</button>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
       <button class="sync-btn" onclick="loadData(true)">🔄 SINCRONIZAR</button>
@@ -512,6 +513,31 @@
         </div>
       </div>
     </div>
+
+    <!-- TAB ENCONTROS -->
+    <div class="tab-section" id="tab-encontros">
+      <div class="admin-card">
+        <div class="admin-card-title">📅 ENCONTROS E LEITURA DE MEMÓRIAS</div>
+        <div style="overflow-x:auto;">
+          <table class="regs-table">
+            <thead>
+              <tr>
+                <th>Agraciado</th>
+                <th>Confidente</th>
+                <th>Cód. AGR</th>
+                <th>Encontros</th>
+                <th>Datas dos Encontros</th>
+                <th>Leitura das Memórias</th>
+              </tr>
+            </thead>
+            <tbody id="encontros-tbody">
+              <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">Nenhum encontro registrado ainda.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1072,6 +1098,41 @@ function renderAdmin(){
     }).join('');
 
   // Registrations
+  // Aba encontros
+  var etbody = document.getElementById('encontros-tbody');
+  if (etbody) {
+    if (registrations.length === 0) {
+      etbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">Nenhuma inscrição ainda.</td></tr>';
+    } else {
+      var erows = '';
+      var regsOrdenados = registrations.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome); });
+      for (var ei = 0; ei < regsOrdenados.length; ei++) {
+        var r = regsOrdenados[ei];
+        var encs = (typeof r.encontros === 'string') ? (function(s){try{return JSON.parse(s);}catch(e){return[];}})(r.encontros) : (r.encontros || []);
+        var encCount = encs.filter(function(e){return e.dataHora;}).length;
+        var datasEnc = '';
+        for (var ei2 = 0; ei2 < encs.length; ei2++) {
+          if (encs[ei2].dataHora) {
+            datasEnc += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">#' + (ei2+1) + ': ' + fmtDate(encs[ei2].dataHora) + '</div>';
+          }
+        }
+        var memStr = r.datasMemorias
+          ? '<span style="color:#81C784;font-size:12px;font-weight:700;">✅ ' + fmtDate(r.datasMemorias) + '</span>'
+          : '<span style="color:var(--text-muted);font-size:12px;">Não registrado</span>';
+        var codigoAgr = r.codigo || '—';
+        erows += '<tr>';
+        erows += '<td><strong>' + r.nome + '</strong></td>';
+        erows += '<td>' + r.mentorName + '</td>';
+        erows += '<td><span style="font-family:monospace;background:var(--dark3);padding:3px 8px;border-radius:4px;font-size:12px;letter-spacing:2px;color:var(--orange);">' + codigoAgr + '</span></td>';
+        erows += '<td style="text-align:center;font-size:24px;font-weight:bold;color:' + (encCount > 0 ? 'var(--orange)' : 'var(--text-muted)') + ';">' + encCount + '</td>';
+        erows += '<td>' + (datasEnc || '<span style="color:var(--text-muted);font-size:12px;">Nenhum ainda</span>') + '</td>';
+        erows += '<td>' + memStr + '</td>';
+        erows += '</tr>';
+      }
+      etbody.innerHTML = erows;
+    }
+  }
+
   const tbody=document.getElementById('regs-tbody');
   tbody.innerHTML=registrations.length===0
     ?'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px;">Nenhuma inscrição ainda.</td></tr>'
