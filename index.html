@@ -860,23 +860,20 @@ async function deleteConfidente(id){
 
 // ════ SUBMIT AGRACIADO ════
 async function submitRegistration(){
-  const nome    =document.getElementById('reg-nome').value.trim();
-  const email   =document.getElementById('reg-email').value.trim();
-  const telefone=document.getElementById('reg-tel').value.trim();
-  const mensagem=document.getElementById('reg-msg').value.trim();
+  if(!partDadosCarregados){showToast('⚠️ BUSQUE SEUS DADOS PRIMEIRO');return;}
 
-  if(!nome||!email||!telefone){showToast('⚠️ PREENCHA NOME, EMAIL E TELEFONE');return;}
-  if(!email.includes('@')){showToast('⚠️ EMAIL INVÁLIDO');return;}
-  if(!regSexo){showToast('⚠️ SELECIONE SEU SEXO');return;}
+  const nome     = partDadosCarregados.nome;
+  const email    = partDadosCarregados.email;
+  const telefone = partDadosCarregados.telefone;
+  const mensagem = document.getElementById('reg-msg').value.trim();
+  regSexo        = partDadosCarregados.sexo;
 
   const mentor=mentors.find(m=>m.id===currentId);
   if(!mentor) return;
 
   // Validação de sexo
   if(regSexo!==mentor.sexo){
-    showToast('💛 Você precisa escolher um confidente do mesmo sexo!');
     closeModal('register-modal');
-    // Mostra modal de sexo errado
     document.getElementById('wrong-sex-modal').classList.add('open');
     return;
   }
@@ -1385,8 +1382,17 @@ async function buscarParticipante() {
     const json = await res.json();
     if (json.status === 'ok' && json.participante) {
       partDadosCarregados = json.participante;
-      // Preenche variáveis usadas no submit
       regSexo = json.participante.sexo;
+
+      // Valida sexo ANTES de mostrar step2
+      const mentor = mentors.find(m=>m.id===currentId);
+      if (mentor && regSexo !== mentor.sexo) {
+        closeModal('register-modal');
+        document.getElementById('wrong-sex-modal').classList.add('open');
+        btn.disabled = false; btn.textContent = 'CARREGAR MEUS DADOS';
+        return;
+      }
+
       // Mostra step 2
       document.getElementById('reg-step1').style.display = 'none';
       document.getElementById('reg-step2').style.display = 'block';
