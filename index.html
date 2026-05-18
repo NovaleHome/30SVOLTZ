@@ -827,12 +827,12 @@ async function notifyConfidente(regId){
   const mentor=mentors.find(m=>m.id===reg.mentorId)||{whatsapp:reg.mentorWhatsapp,name:reg.mentorName};
 
   const msg=encodeURIComponent(
-    `🎯 *30 Semanas Voltz — Novo Agraciado!*\n\n`+
+    ` *30 Semanas Voltz — Novo Agraciado!*\n\n`+
     `Olá *${mentor.name}*, você tem um novo agraciado!\n\n`+
-    `👤 *Nome:* ${reg.nome}\n`+
-    `📧 *Email:* ${reg.email}\n`+
-    `📱 *Telefone:* ${reg.telefone}\n`+
-    `⚥ *Sexo:* ${reg.sexo==='M'?'Masculino':'Feminino'}\n`+
+    ` *Nome:* ${reg.nome}\n`+
+    ` *Email:* ${reg.email}\n`+
+    ` *Telefone:* ${reg.telefone}\n`+
+    ` *Sexo:* ${reg.sexo==='M'?'Masculino':'Feminino'}\n`+
     (reg.mensagem?`💬 *Mensagem:* ${reg.mensagem}\n`:'')+
     `\n📅 *Inscrição:* ${new Date(reg.date).toLocaleDateString('pt-BR')}\n`+
     `📅 *Notificado em:* ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}\n\n`+
