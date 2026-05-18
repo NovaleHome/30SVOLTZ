@@ -1129,18 +1129,30 @@ function renderAdmin(){
 
 // ════ MODAL ════
 function openReg(id){
-  const m=mentors.find(x=>x.id===id);if(!m)return;
-  currentId=id;
-  document.getElementById('modal-name').textContent=m.name;
-  document.getElementById('modal-photo').src=getPhotoSrc(m);
-  // Reset modal to step1
-  document.getElementById('reg-step1').style.display='block';
-  document.getElementById('reg-step2').style.display='none';
-  document.getElementById('reg-codigo-part').value='';
-  document.getElementById('reg-code-error').style.display='none';
-  document.getElementById('reg-msg').value='';
-  partDadosCarregados=null;
-  regSexo='';
+  currentId = id;
+  // Find mentor - use window._mentorList as fallback
+  const allM = (mentors && mentors.length > 0) ? mentors : (window._mentorList || []);
+  const m = allM.find(x => x.id === id);
+
+  // Set mentor info if found
+  if (m) {
+    document.getElementById('modal-name').textContent = m.name;
+    document.getElementById('modal-photo').src = getPhotoSrc(m);
+  } else {
+    document.getElementById('modal-name').textContent = '...';
+    document.getElementById('modal-photo').src = '';
+  }
+
+  // Reset to step1
+  document.getElementById('reg-step1').style.display = 'block';
+  document.getElementById('reg-step2').style.display = 'none';
+  document.getElementById('reg-codigo-part').value = '';
+  document.getElementById('reg-code-error').style.display = 'none';
+  document.getElementById('reg-msg').value = '';
+  partDadosCarregados = null;
+  regSexo = '';
+
+  // Open modal
   document.getElementById('register-modal').classList.add('open');
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
