@@ -967,14 +967,14 @@ function renderAdmin(){
         :`<div class="notif-pending" onclick="notifyConfidente('${r.id}')">📲 ENVIAR</div>`;
       return `
         <tr>
-          <td style="white-space:nowrap;">${dt.toLocaleDateString('pt-BR')} ${dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td>
+          <td style="white-space:nowrap;">${fmtDate(r.date)}</td>
           <td><strong>${r.nome}</strong></td>
           <td>${r.email}</td>
           <td><span class="card-sex-tag ${r.sexo||''}">${r.sexo==='M'?'Masc':'Fem'}</span></td>
           <td>${r.telefone}</td>
           <td>${r.mentorName}</td>
           <td>${notifHtml}</td>
-          <td><a class="wa-link" href="https://wa.me/${(r.telefone||'').replace(/\D/g,'')}" target="_blank">💬</a></td>
+          <td><a class="wa-link" href="${buildWALink(r)}" target="_blank" title="Enviar para o Confidente">📲</a></td>
         </tr>`;
     }).join('');
 }
@@ -1019,6 +1019,32 @@ function showToast(msg){
   document.getElementById('toast-msg').textContent=msg;
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+function fmtDate(d){
+  if(!d) return '—';
+  try{
+    const dt=new Date(d);
+    if(isNaN(dt.getTime())) return '—';
+    return dt.toLocaleDateString('pt-BR')+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){return '—';}
+}
+
+function buildWALink(r){
+  if(!r.mentorWhatsapp) return '#';
+  const wa=String(r.mentorWhatsapp).replace(/\D/g,'');
+  const msg=encodeURIComponent(
+    `🎯 *30 Semanas Voltz — Novo Agraciado!*\n\n`+
+    `Olá *${r.mentorName}*, você tem um novo agraciado!\n\n`+
+    `👤 *Nome:* ${r.nome}\n`+
+    `📧 *Email:* ${r.email}\n`+
+    `📱 *Telefone:* ${r.telefone}\n`+
+    `⚥ *Sexo:* ${r.sexo==='M'?'Masculino':'Feminino'}\n`+
+    (r.mensagem?`💬 *Mensagem:* ${r.mensagem}\n`:'')+
+    `\n📅 *Inscrição:* ${fmtDate(r.date)}\n`+
+    `\n// Confie em uma nova direção`
+  );
+  return `https://wa.me/${wa}?text=${msg}`;
 }
 
 function avatar(name,sexo){
