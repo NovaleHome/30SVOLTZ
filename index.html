@@ -982,26 +982,37 @@ function renderPublic(q){
     return;
   }
 
-  grid.innerHTML = list.map(function(m) {
+  // Store mentors in window for card clicks
+  window._mentorList = list;
+  var cards = '';
+  for (var i=0; i<list.length; i++) {
+    var m = list[i];
     var isFull = (m.inscritos||0) >= m.vagas;
-    var rem    = Math.max(0, m.vagas - (m.inscritos||0));
-    var photo  = getPhotoSrc(m);
+    var rem = Math.max(0, m.vagas - (m.inscritos||0));
+    var photo = getPhotoSrc(m);
     var borderClass = m.sexo === 'M' ? 'photo-border-M' : 'photo-border-F';
-    var sexLabel    = m.sexo === 'M' ? 'Masculino' : 'Feminino';
-    var clickAttr   = isFull ? '' : 'onclick="openReg('' + m.id + '')"';
-    var card = '<div class="conf-card' + (isFull?' full':'') + '" ' + clickAttr + '>';
-    card += '<div class="photo-wrap ' + borderClass + '">';
-    card += '<img src="' + photo + '" alt="' + m.name + '" loading="lazy" onerror="this.src=avatar(\'' + m.name.replace(/'/g,"\'") + '\',\'' + m.sexo + '\')">';
-    card += '<div class="card-badge' + (isFull?' esgotado':'') + '">' + (isFull ? 'ESGOTADO' : rem + ' VAGA' + (rem!==1?'S':'')) + '</div>';
-    card += '</div>';
-    card += '<div class="card-stripe"></div>';
-    card += '<div class="card-body">';
-    card += '<h3>' + m.name + '</h3>';
-    card += '<span class="card-sex-tag ' + m.sexo + '">' + sexLabel + '</span>';
-    card += '<button class="choose-btn" style="margin-top:12px;"' + (isFull?' disabled':'') + '>' + (isFull ? 'SEM VAGAS' : '// ESCOLHER ESTE CONFIDENTE') + '</button>';
-    card += '</div></div>';
-    return card;
-  }).join('');
+    var sexLabel = m.sexo === 'M' ? 'Masculino' : 'Feminino';
+    var vagasTxt = isFull ? 'ESGOTADO' : (rem + ' VAGA' + (rem!==1?'S':''));
+    var btnTxt = isFull ? 'SEM VAGAS' : '// ESCOLHER ESTE CONFIDENTE';
+    cards += '<div class="conf-card' + (isFull?' full':'') + '" data-mid="' + m.id + '">';
+    cards += '<div class="photo-wrap ' + borderClass + '">';
+    cards += '<img src="' + photo + '" alt="" loading="lazy">';
+    cards += '<div class="card-badge' + (isFull?' esgotado':'') + '">' + vagasTxt + '</div>';
+    cards += '</div>';
+    cards += '<div class="card-stripe"></div>';
+    cards += '<div class="card-body">';
+    cards += '<h3>' + m.name + '</h3>';
+    cards += '<span class="card-sex-tag ' + m.sexo + '">' + sexLabel + '</span>';
+    cards += '<button class="choose-btn" style="margin-top:12px;"' + (isFull?' disabled':'') + '>' + btnTxt + '</button>';
+    cards += '</div></div>';
+  }
+  grid.innerHTML = cards;
+  // Attach click events after DOM update
+  grid.querySelectorAll('.conf-card:not(.full)').forEach(function(card) {
+    card.addEventListener('click', function() {
+      openReg(this.getAttribute('data-mid'));
+    });
+  });
 }
 
 function filterCards(){renderPublic(document.getElementById('search-input').value);}
