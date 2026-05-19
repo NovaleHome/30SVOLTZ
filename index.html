@@ -1228,7 +1228,7 @@ function avatar(name,sexo){const ini=(name||'?').split(' ').slice(0,2).map(w=>w[
 </div>
 
 <style>
-@keyframes piscaVermelho{0%,100%{background:#5C0000;}50%{background:#9B0000;}}
+@keyframes piscaVermelho{0%,100%{background:#C1203B;}50%{background:#A01830;}}
 </style>
 
 <script>
@@ -1246,7 +1246,7 @@ function iniciarPartilha(){
   if(cronInterval){clearInterval(cronInterval);cronInterval=null;}
   document.getElementById('cron-regras').style.display='none';
   var t=document.getElementById('cron-timer');
-  t.style.display='flex';t.style.animation='';t.style.background='#0E3D1A';
+  t.style.display='flex';t.style.animation='';t.style.background='#0E3D1A';document.getElementById('cron-tempo').style.color='white';document.getElementById('cron-status').style.color='rgba(255,255,255,0.55)';document.getElementById('cron-label').style.color='rgba(255,255,255,0.45)';
   atualizarDisplayCron();
   document.getElementById('cron-status').textContent='PRONTO';
   document.getElementById('btn-cron-iniciar').textContent='INICIAR';
@@ -1285,10 +1285,10 @@ function atualizarDisplayCron(){
 function atualizarCorCron(){
   var t=document.getElementById('cron-timer');
   if(cronRestante<=60){
-    t.style.animation='';t.style.background='#5C4000';
-    document.getElementById('cron-status').textContent='ATENCAO — 1 MINUTO!';
+    t.style.animation='';t.style.background='#FFE800';
+    document.getElementById('cron-status').textContent='ATENCAO — 1 MINUTO!';document.getElementById('cron-status').style.color='rgba(0,0,0,0.5)';document.getElementById('cron-tempo').style.color='rgba(0,0,0,0.85)';document.getElementById('cron-label').style.color='rgba(0,0,0,0.4)';
   }else{
-    t.style.animation='';t.style.background='#0E3D1A';
+    t.style.animation='';t.style.background='#0E3D1A';document.getElementById('cron-tempo').style.color='white';document.getElementById('cron-status').style.color='rgba(255,255,255,0.55)';document.getElementById('cron-label').style.color='rgba(255,255,255,0.45)';
     document.getElementById('cron-status').textContent='EM ANDAMENTO';
   }
 }
@@ -1297,7 +1297,7 @@ function tempoEsgotado(){
   document.getElementById('cron-tempo').textContent='0:00';
   document.getElementById('cron-status').textContent='TEMPO ESGOTADO';
   document.getElementById('btn-cron-iniciar').textContent='INICIAR';
-  document.getElementById('cron-timer').style.animation='piscaVermelho 1.2s ease-in-out infinite';
+  document.getElementById('cron-timer').style.animation='piscaVermelho 1.2s ease-in-out infinite';document.getElementById('cron-tempo').style.color='white';document.getElementById('cron-status').style.color='rgba(255,255,255,0.7)';document.getElementById('cron-label').style.color='rgba(255,255,255,0.5)';
 }
 
 function voltarRegras(){
