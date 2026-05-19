@@ -32,7 +32,7 @@
   .load-logo span{color:var(--orange);}
 
   /* HEADER */
-  .site-header{background:var(--green-dark);border-bottom:3px solid var(--orange);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:70px;position:sticky;top:0;z-index:100;}
+  .site-header{background:var(--green-dark);border-bottom:3px solid var(--orange);padding:0 24px;display:flex;align-items:center;justify-content:space-between;min-height:64px;position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:8px;padding-top:8px;padding-bottom:8px;}
   .brand-logo{display:flex;align-items:center;gap:14px;}
   .brand-badge{background:var(--orange);color:var(--white);font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;padding:3px 10px;border-radius:4px;}
   .brand-name{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--white);line-height:1;}
@@ -275,15 +275,18 @@
       <div class="brand-badge">CICLO</div>
       <div class="brand-name">30 <span>SEMANAS</span> VOLTZ</div>
     </div>
-    <div class="header-actions">
-      <a href="#" class="header-btn primary" onclick="showPage('cadastro-confidente')">QUERO SER CONFIDENTE</a>
+    <div class="header-actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <a href="#" class="header-btn primary" onclick="showPage('participante')" style="font-size:12px;padding:7px 14px;">📝 CADASTRAR</a>
+      <a href="#" class="header-btn primary" onclick="showPage('cadastro-confidente')" style="font-size:12px;padding:7px 14px;">🎯 SER CONFIDENTE</a>
+      <a href="#" class="header-btn" onclick="showPage('portal')" style="font-size:12px;padding:7px 14px;">// CONFIDENTE</a>
+      <a href="#" class="header-btn" onclick="showPage('presenca')" style="font-size:12px;padding:7px 14px;">// RODA DE PARTILHA</a>
+      <a href="#" class="header-btn" onclick="showPage('login')" style="font-size:12px;padding:7px 14px;">⚙ ADMIN</a>
     </div>
   </header>
 
   <div class="hero">
     <h1>ESCOLHA SEU<span class="highlight">CONFIDENTE</span><span class="sub">30 SEMANAS</span></h1>
     <p class="hero-desc">Conecte-se com um confidente que vai caminhar com você nessa jornada. Escolha, inscreva-se e transforme suas próximas 30 semanas.</p>
-    <div style="margin-bottom:20px;"><a href="#" onclick="showPage('participante')" class="header-btn primary" style="font-size:14px;padding:12px 28px;border-radius:6px;display:inline-block;">📝 AINDA NÃO SOU PARTICIPANTE — CADASTRAR</a></div>
     <div class="search-wrap">
       <input type="text" id="search-input" placeholder="Buscar confidente por nome...">
       <button onclick="filterCards()">BUSCAR</button>
@@ -305,11 +308,6 @@
 
   <footer class="site-footer">
     <div class="footer-brand">30 <span>SEMANAS</span> VOLTZ</div>
-    <div style="display:flex;gap:16px;">
-      <a href="#" onclick="showPage('login')">//  ACESSO ADMINISTRATIVO</a>
-      <a href="#" onclick="showPage('portal')">//  ÁREA DO CONFIDENTE</a>
-      <a href="#" onclick="showPage('presenca')">//  RODA DE PARTILHA</a>
-    </div>
   </footer>
 </div>
 
@@ -525,6 +523,7 @@
             <thead>
               <tr>
                 <th>Agraciado</th>
+                <th>Eklesia</th>
                 <th>Confidente</th>
                 <th>Cód. AGR</th>
                 <th>Encontros</th>
@@ -1174,7 +1173,8 @@ function renderAdmin(){
           : '<span style="color:var(--text-muted);font-size:13px;">0</span>';
 
         erows += '<tr>';
-        erows += '<td><strong>'+p.nome+'</strong><br><span style="font-family:monospace;font-size:11px;color:var(--orange);letter-spacing:1px;">'+partCod+'</span></td>';
+        erows += '<td class="det-link" data-cod="' + partCod + '" style="cursor:pointer;"><strong style="color:var(--orange-light);text-decoration:underline;text-underline-offset:3px;">' + p.nome + '</strong><br><span style="font-family:monospace;font-size:11px;color:var(--text-muted);letter-spacing:1px;">' + partCod + '</span></td>';
+        erows += '<td style="font-family:monospace;font-size:13px;color:var(--text-muted);">'+(p.eklesia||'—')+'</td>';
         erows += '<td>'+confStr+'</td>';
         erows += '<td><span style="font-family:monospace;background:var(--dark3);padding:3px 8px;border-radius:4px;font-size:12px;letter-spacing:2px;color:var(--text-muted);">'+agrCod+'</span></td>';
         erows += '<td style="text-align:center;font-size:22px;font-weight:bold;color:'+(encCount>0?'var(--orange)':'var(--text-muted)')+';">'+encCount+'</td>';
@@ -1184,6 +1184,12 @@ function renderAdmin(){
         erows += '</tr>';
       }
       etbody.innerHTML = erows;
+      // Attach click events via delegation
+      etbody.querySelectorAll('.det-link').forEach(function(td) {
+        td.addEventListener('click', function() {
+          abrirDetalheParticipante(this.getAttribute('data-cod'));
+        });
+      });
     }
   }
 
@@ -1365,7 +1371,22 @@ async function submitParticipante() {
   if (!nome||!tel||!email||!nasc||!cpf||!partSexo) { showToast('⚠️ PREENCHA TODOS OS CAMPOS OBRIGATÓRIOS'); return; }
   if (!email.includes('@')) { showToast('⚠️ EMAIL INVÁLIDO'); return; }
   var btn = document.getElementById('part-btn');
-  btn.disabled = true; btn.textContent = '⏳ CADASTRANDO...';
+  btn.disabled = true; btn.textContent = '⏳ VERIFICANDO...';
+
+  // Verifica CPF duplicado antes de salvar
+  try {
+    var cpfCheck = await fetch(SHEETS_URL + '?action=checkCPF&cpf=' + encodeURIComponent(cpf.replace(/\D/g,'')) + '&cb=' + Date.now());
+    var cpfJson = await cpfCheck.json();
+    if (cpfJson.existe) {
+      showToast('⚠️ CPF JÁ CADASTRADO! Cada pessoa pode ter apenas um cadastro.');
+      btn.disabled = false; btn.textContent = '✅ REALIZAR CADASTRO';
+      return;
+    }
+  } catch(e) {
+    // Se não conseguir verificar, continua (melhor cadastrar do que bloquear)
+  }
+
+  btn.textContent = '⏳ CADASTRANDO...';
   var codigo = gerarCodigoPart();
   try {
     await post({ action:'addParticipante', id:'P'+Date.now(), nome, telefone:tel.replace(/\D/g,''), email, nascimento:nasc, cpf, eklesia, sexo:partSexo, codigo, createdAt:new Date().toISOString() });
@@ -1652,6 +1673,85 @@ showPage = function(name) {
 };
 
 
+
+// ════ DETALHE PARTICIPANTE ════
+function abrirDetalheParticipante(partCod) {
+  var p = null;
+  for (var i = 0; i < participantes.length; i++) {
+    if ((participantes[i].codigo||'').toUpperCase() === partCod.toUpperCase()) {
+      p = participantes[i]; break;
+    }
+  }
+  if (!p) return;
+
+  var reg = null;
+  for (var i = 0; i < registrations.length; i++) {
+    if ((registrations[i].codigoPart||'').toUpperCase() === partCod.toUpperCase()) {
+      reg = registrations[i]; break;
+    }
+  }
+
+  var presCount = 0;
+  for (var i = 0; i < presencas.length; i++) {
+    if ((presencas[i].codigoPart||'').toUpperCase() === partCod.toUpperCase()) presCount++;
+  }
+
+  var encs = [];
+  if (reg) {
+    encs = (typeof reg.encontros === 'string')
+      ? (function(s){try{return JSON.parse(s);}catch(e){return[];}})(reg.encontros)
+      : (reg.encontros || []);
+  }
+  var encCount = encs.filter(function(e){return e.dataHora;}).length;
+
+  // Preenche modal
+  document.getElementById('det-nome').textContent     = p.nome;
+  document.getElementById('det-codigo').textContent   = partCod;
+  document.getElementById('det-sexo').textContent     = p.sexo === 'M' ? 'Masculino' : 'Feminino';
+  document.getElementById('det-tel').textContent      = p.telefone || '—';
+  document.getElementById('det-email').textContent    = p.email || '—';
+  document.getElementById('det-cpf').textContent      = p.cpf || '—';
+  document.getElementById('det-eklesia').textContent  = p.eklesia || '—';
+
+  // Nascimento formatado
+  var nascStr = '—';
+  if (p.nascimento) {
+    try {
+      var d = new Date(p.nascimento);
+      nascStr = d.toLocaleDateString('pt-BR');
+    } catch(e) { nascStr = p.nascimento; }
+  }
+  document.getElementById('det-nasc').textContent = nascStr;
+
+  // Jornada
+  document.getElementById('det-confidente').textContent = reg ? reg.mentorName : 'Sem confidente';
+  document.getElementById('det-agr').textContent = reg ? (reg.codigo || '—') : '—';
+  document.getElementById('det-encontros').textContent  = encCount;
+  document.getElementById('det-presencas').textContent  = presCount;
+  document.getElementById('det-memorias').textContent   = (reg && reg.datasMemorias) ? '✅ ' + fmtDate(reg.datasMemorias) : 'Não registrado';
+
+  // Datas dos encontros
+  var datasWrap = document.getElementById('det-datas-wrap');
+  var datasDiv  = document.getElementById('det-datas');
+  if (encCount > 0) {
+    datasWrap.style.display = 'block';
+    var datasHtml = '';
+    for (var i = 0; i < encs.length; i++) {
+      if (encs[i].dataHora) {
+        datasHtml += '<div style="font-size:13px;padding:4px 0;border-bottom:1px solid var(--border);">';
+        datasHtml += '<span style="color:var(--orange);font-weight:bold;margin-right:10px;">#' + (i+1) + '</span>';
+        datasHtml += fmtDate(encs[i].dataHora);
+        datasHtml += '</div>';
+      }
+    }
+    datasDiv.innerHTML = datasHtml;
+  } else {
+    datasWrap.style.display = 'none';
+  }
+
+  document.getElementById('detalhe-modal').classList.add('open');
+}
+
 function fmtDate(d){
   if(!d) return '—';
   try{
@@ -1919,6 +2019,48 @@ function getPhotoSrc(m){
     </div>
 
     <div id="pres-enviado" style="display:none;margin-top:16px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:8px;padding:14px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;color:#81C784;font-size:15px;"></div>
+  </div>
+</div>
+
+
+<!-- MODAL DETALHE PARTICIPANTE -->
+<div class="modal-overlay" id="detalhe-modal">
+  <div class="modal" style="max-width:560px;">
+    <button class="modal-close" onclick="closeModal('detalhe-modal')">✕</button>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:3px;color:var(--orange);margin-bottom:6px;">// PARTICIPANTE</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:2px;margin-bottom:20px;" id="det-nome"></div>
+
+    <!-- Dados pessoais -->
+    <div style="background:var(--dark3);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:6px;padding:16px;margin-bottom:14px;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--orange);margin-bottom:12px;">DADOS PESSOAIS</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;">
+        <div><span style="color:var(--text-muted);font-size:11px;display:block;margin-bottom:2px;">CÓDIGO</span><span id="det-codigo" style="font-family:monospace;color:var(--orange);letter-spacing:2px;font-size:15px;font-weight:bold;"></span></div>
+        <div><span style="color:var(--text-muted);font-size:11px;display:block;margin-bottom:2px;">SEXO</span><span id="det-sexo"></span></div>
+        <div><span style="color:var(--text-muted);font-size:11px;display:block;margin-bottom:2px;">TELEFONE</span><span id="det-tel"></span></div>
+        <div><span style="color:var(--text-muted);font-size:11px;display:block;margin-bottom:2px;">EMAIL</span><span id="det-email" style="font-size:12px;word-break:break-all;"></span></div>
+        <div><span style="color:var(--text-muted);font-size:11px;display:block;margin-bottom:2px;">NASCIMENTO</span><span id="det-nasc"></span></div>
+        <div><span style="color:var(--text-muted);font-size:11px;display:block;margin-bottom:2px;">CPF</span><span id="det-cpf"></span></div>
+        <div><span style="color:var(--text-muted);font-size:11px;display:block;margin-bottom:2px;">EKLESIA</span><span id="det-eklesia"></span></div>
+      </div>
+    </div>
+
+    <!-- Jornada -->
+    <div style="background:var(--dark3);border:1px solid var(--border);border-left:3px solid var(--green-mid);border-radius:6px;padding:16px;margin-bottom:14px;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#7FD98F;margin-bottom:12px;">JORNADA 30 SEMANAS</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;">
+        <div><span style="color:var(--text-muted);font-size:11px;display:block;margin-bottom:2px;">CONFIDENTE</span><span id="det-confidente"></span></div>
+        <div><span style="color:var(--text-muted);font-size:11px;display:block;margin-bottom:2px;">CÓD. AGRACIADO</span><span id="det-agr" style="font-family:monospace;letter-spacing:2px;"></span></div>
+        <div><span style="color:var(--text-muted);font-size:11px;display:block;margin-bottom:2px;">ENCONTROS</span><span id="det-encontros" style="font-size:20px;font-weight:bold;color:var(--orange);"></span></div>
+        <div><span style="color:var(--text-muted);font-size:11px;display:block;margin-bottom:2px;">RODAS DE PARTILHA</span><span id="det-presencas" style="font-size:20px;font-weight:bold;color:var(--orange);"></span></div>
+        <div style="grid-column:1/-1;"><span style="color:var(--text-muted);font-size:11px;display:block;margin-bottom:2px;">LEITURA DAS MEMÓRIAS</span><span id="det-memorias"></span></div>
+      </div>
+    </div>
+
+    <!-- Datas dos encontros -->
+    <div id="det-datas-wrap" style="display:none;background:var(--dark3);border:1px solid var(--border);border-radius:6px;padding:16px;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">DATAS DOS ENCONTROS</div>
+      <div id="det-datas"></div>
+    </div>
   </div>
 </div>
 
