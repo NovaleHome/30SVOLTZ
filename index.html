@@ -1119,50 +1119,75 @@ function renderAdmin(){
 
   // Registrations
   // Aba encontros
+  // ── ABA ENCONTROS — PART-XXXX é a chave de cruzamento entre todas as bases ──
   var etbody = document.getElementById('encontros-tbody');
   if (etbody) {
-    if (registrations.length === 0) {
-      etbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">Nenhuma inscrição ainda.</td></tr>';
+    // Base: todos os participantes cadastrados
+    var baseList = participantes.slice().sort(function(a,b){
+      return (a.nome||'').localeCompare(b.nome||'');
+    });
+
+    if (baseList.length === 0) {
+      etbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:40px;">Nenhum participante cadastrado ainda.</td></tr>';
     } else {
       var erows = '';
-      var regsOrdenados = registrations.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome); });
-      for (var ei = 0; ei < regsOrdenados.length; ei++) {
-        var r = regsOrdenados[ei];
-        var encs = (typeof r.encontros === 'string') ? (function(s){try{return JSON.parse(s);}catch(e){return[];}})(r.encontros) : (r.encontros || []);
+      for (var ei = 0; ei < baseList.length; ei++) {
+        var p = baseList[ei];
+        var partCod = (p.codigo||'').toUpperCase();
+
+        // Cruza com Inscricoes pelo PART-XXXX
+        var reg = null;
+        for (var ri = 0; ri < registrations.length; ri++) {
+          if ((registrations[ri].codigoPart||'').toUpperCase() === partCod) {
+            reg = registrations[ri]; break;
+          }
+        }
+
+        // Encontros do agraciado
+        var encs = [];
+        if (reg) {
+          encs = (typeof reg.encontros === 'string')
+            ? (function(s){try{return JSON.parse(s);}catch(e2){return[];}})(reg.encontros)
+            : (reg.encontros || []);
+        }
         var encCount = encs.filter(function(e){return e.dataHora;}).length;
         var datasEnc = '';
         for (var ei2 = 0; ei2 < encs.length; ei2++) {
           if (encs[ei2].dataHora) {
-            datasEnc += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">#' + (ei2+1) + ': ' + fmtDate(encs[ei2].dataHora) + '</div>';
+            datasEnc += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">#'+(ei2+1)+': '+fmtDate(encs[ei2].dataHora)+'</div>';
           }
         }
-        var memStr = r.datasMemorias
-          ? '<span style="color:#81C784;font-size:12px;font-weight:700;">✅ ' + fmtDate(r.datasMemorias) + '</span>'
-          : '<span style="color:var(--text-muted);font-size:12px;">Não registrado</span>';
-        var codigoAgr = r.codigo || '—';
-        erows += '<tr>';
-        erows += '<td><strong>' + r.nome + '</strong></td>';
-        erows += '<td>' + r.mentorName + '</td>';
-        erows += '<td><span style="font-family:monospace;background:var(--dark3);padding:3px 8px;border-radius:4px;font-size:12px;letter-spacing:2px;color:var(--orange);">' + codigoAgr + '</span></td>';
-        erows += '<td style="text-align:center;font-size:24px;font-weight:bold;color:' + (encCount > 0 ? 'var(--orange)' : 'var(--text-muted)') + ';">' + encCount + '</td>';
-        erows += '<td>' + (datasEnc || '<span style="color:var(--text-muted);font-size:12px;">Nenhum ainda</span>') + '</td>';
-        // Count presencas for this participant
+
+        // Cruza com Presencas pelo PART-XXXX
         var presCount = 0;
-        for (var pi = 0; pi < (window._presencas || []).length; pi++) {
-          if ((window._presencas[pi].codigoPart||'').toUpperCase() === (r.codigoPart||'').toUpperCase()) presCount++;
+        for (var pi2 = 0; pi2 < presencas.length; pi2++) {
+          if ((presencas[pi2].codigoPart||'').toUpperCase() === partCod) presCount++;
         }
-        var presStr = presCount > 0
-          ? '<span style="color:var(--orange);font-weight:bold;font-size:18px;">' + presCount + '</span>'
+
+        var confStr  = reg ? reg.mentorName : '<span style="color:var(--text-muted);font-size:12px;font-style:italic;">Sem confidente</span>';
+        var agrCod   = reg ? (reg.codigo||'—') : '—';
+        var memStr   = (reg && reg.datasMemorias)
+          ? '<span style="color:#81C784;font-size:12px;font-weight:700;">✅ '+fmtDate(reg.datasMemorias)+'</span>'
+          : '<span style="color:var(--text-muted);font-size:12px;">Não registrado</span>';
+        var presStr  = presCount > 0
+          ? '<span style="color:var(--orange);font-weight:bold;font-size:20px;">'+presCount+'</span>'
           : '<span style="color:var(--text-muted);font-size:13px;">0</span>';
-        erows += '<td style="text-align:center;">' + presStr + '</td>';
-        erows += '<td>' + memStr + '</td>';
+
+        erows += '<tr>';
+        erows += '<td><strong>'+p.nome+'</strong><br><span style="font-family:monospace;font-size:11px;color:var(--orange);letter-spacing:1px;">'+partCod+'</span></td>';
+        erows += '<td>'+confStr+'</td>';
+        erows += '<td><span style="font-family:monospace;background:var(--dark3);padding:3px 8px;border-radius:4px;font-size:12px;letter-spacing:2px;color:var(--text-muted);">'+agrCod+'</span></td>';
+        erows += '<td style="text-align:center;font-size:22px;font-weight:bold;color:'+(encCount>0?'var(--orange)':'var(--text-muted)')+';">'+encCount+'</td>';
+        erows += '<td>'+(datasEnc||'<span style="color:var(--text-muted);font-size:12px;">Nenhum ainda</span>')+'</td>';
+        erows += '<td style="text-align:center;">'+presStr+'</td>';
+        erows += '<td>'+memStr+'</td>';
         erows += '</tr>';
       }
       etbody.innerHTML = erows;
     }
   }
 
-  const tbody=document.getElementById('regs-tbody');
+    const tbody=document.getElementById('regs-tbody');
   tbody.innerHTML=registrations.length===0
     ?'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px;">Nenhuma inscrição ainda.</td></tr>'
     :[...registrations].reverse().map(r=>{
