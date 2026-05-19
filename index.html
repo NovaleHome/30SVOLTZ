@@ -459,23 +459,22 @@ body{font-family:'Barlow',sans-serif;background:var(--dark);color:var(--text);mi
       <button class="btn-primary" id="part-btn" onclick="submitParticipante()">✅ REALIZAR CADASTRO</button>
     </div>
 
-    <!-- RECUPERAR QR CODE -->
-    <div style="margin-top:16px;text-align:center;">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-        <div style="flex:1;height:1px;background:var(--border);"></div>
-        <span style="font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);">ou</span>
-        <div style="flex:1;height:1px;background:var(--border);"></div>
-      </div>
-      <button onclick="abrirRecuperacao()" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:4px;padding:12px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--orange)';this.style.color='var(--orange)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">
-        🔑 RECUPERAR MEU QR CODE
-      </button>
-    <div class="cadastro-card" style="display:none;" id="part-recupera-card">
+    <!-- SEPARADOR -->
+    <div style="display:flex;align-items:center;gap:12px;margin:20px 0;">
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);">ou</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
     </div>
-    </div>
-    <!-- CARD RECUPERAÇÃO -->
-    <div id="part-recupera-card" class="cadastro-card" style="display:none;margin-top:0;">
+
+    <!-- BOTÃO RECUPERAR -->
+    <button id="btn-recuperar" onclick="abrirRecuperacao()" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:4px;padding:13px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--orange)';this.style.color='var(--orange)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">
+      🔑 RECUPERAR MEU QR CODE
+    </button>
+
+    <!-- CARD RECUPERAÇÃO (oculto por padrão) -->
+    <div id="part-recupera-card" class="cadastro-card" style="display:none;margin-top:16px;">
       <div class="section-divider">// RECUPERAR QR CODE</div>
-      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;line-height:1.6;">Digite seu CPF para recuperar seu código de participante e QR Code.</p>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;line-height:1.6;">Digite seu CPF para recuperar seu código e QR Code de participante.</p>
       <div class="form-group">
         <label>CPF *</label>
         <input type="text" id="rec-cpf" placeholder="000.000.000-00" maxlength="14" oninput="applyCpfMask(this)">
@@ -484,6 +483,7 @@ body{font-family:'Barlow',sans-serif;background:var(--dark);color:var(--text);mi
       <button class="btn-primary" id="rec-btn" onclick="recuperarQR()">🔍 BUSCAR MEU CÓDIGO</button>
       <button onclick="fecharRecuperacao()" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:4px;padding:10px;margin-top:8px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">✕ CANCELAR</button>
     </div>
+
   </div>
   <div id="part-result-area" style="display:none;max-width:500px;margin:0 auto;padding:50px 40px;text-align:center;">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:3px;color:var(--orange);margin-bottom:8px;">// CADASTRO REALIZADO</div>
