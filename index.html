@@ -636,6 +636,7 @@ const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxqjITFQaV3jEbXiLPiv
 let mentors = [];        // approved confidentes
 let pending = [];        // pending approval
 let registrations = [];
+let participantes = [];
 let currentId = null;
 let partDadosCarregados = null;
 let partSexo = '';
@@ -679,6 +680,7 @@ async function loadData(showMsg) {
       });
     }
     if (Array.isArray(json.registrations)) registrations = json.registrations;
+    if (Array.isArray(json.participantes))  participantes  = json.participantes;
     if (showMsg) showToast('✅ DADOS ATUALIZADOS!');
   } catch(e) {
     showToast('⚠️ Erro ao carregar. Verifique a conexão.');
