@@ -579,7 +579,7 @@ body{font-family:'Barlow',sans-serif;background:var(--dark);color:var(--text);mi
 </div>
 
 <script>
-const SHEETS_URL='https://script.google.com/macros/s/AKfycbxqjITFQaV3jEbXiLPivwcmMR9C0i6XlmuIGrNaQPxNPnSkL081dZjs3uxiH9_q8WTh/exec';
+const SHEETS_URL='https://script.google.com/macros/s/AKfycbzgrtrIEQJ5Q2wIrhvJnTsNx1w5nJosmir6Kddb6-0RdM0ezM3JuxdnZEKHzKDBJTcMmg/exec';
 let mentors=[],pending=[],registrations=[],participantes=[],presencas=[];
 let currentId=null,partDadosCarregados=null,partSexo='',confSexo='',photoBase64Conf='';
 let _adminToken=null,_facToken=null;
@@ -845,7 +845,25 @@ function renderAdmin(){
     const tr=document.createElement('tr');
     [fmtDate(r.date),r.nome,r.email,r.sexo==='M'?'Masc':'Fem',r.telefone,r.mentorName].forEach(val=>{const td=document.createElement('td');td.textContent=val;tr.appendChild(td);});
     const tdN=document.createElement('td');
-    if(r.notified){const span=document.createElement('div');span.className='notif-sent';span.textContent='✅ ENVIADO — '+fmtDate(r.notifiedAt);tdN.appendChild(span);}
+    if(r.notified){
+        const wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-direction:column;gap:4px;';
+        // Datas de envio
+        var envios=[];
+        try{envios=JSON.parse(r._envios||'[]');}catch(e){envios=[];}
+        if(envios.length===0&&r.notifiedAt){envios=[r.notifiedAt];}
+        envios.forEach(function(dt,i){
+          const s=document.createElement('div');s.className='notif-sent';
+          s.textContent='✅ '+(i===0?'ENVIADO':'REENVIO')+' — '+fmtDate(dt);
+          wrap.appendChild(s);
+        });
+        // Botão reenviar
+        const btnRe=document.createElement('div');btnRe.className='notif-pending';
+        btnRe.style.marginTop='4px';
+        btnRe.textContent='↺ REENVIAR';
+        btnRe.addEventListener('click',()=>notifyConfidente(r.id));
+        wrap.appendChild(btnRe);
+        tdN.appendChild(wrap);
+      }
     else{const btn=document.createElement('div');btn.className='notif-pending';btn.textContent='📲 ENVIAR AO CONFIDENTE';btn.addEventListener('click',()=>notifyConfidente(r.id));tdN.appendChild(btn);}
     tr.appendChild(tdN);tbody.appendChild(tr);
   });}
