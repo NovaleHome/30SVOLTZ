@@ -309,8 +309,8 @@ body{font-family:'Barlow',sans-serif;background:var(--dark);color:var(--text);mi
     <div class="admin-nav">
       <button class="nav-btn active" onclick="switchTab('tab-pending',this)">⏳ PENDENTES <span id="pending-count-badge"></span></button>
       <button class="nav-btn" onclick="switchTab('tab-conf',this)">🎯 CONFIDENTES</button>
-      <button class="nav-btn" onclick="switchTab('tab-regs',this)">📋 INSCRIÇÕES</button>
-      <button class="nav-btn" onclick="switchTab('tab-encontros',this)">📅 ENCONTROS</button>
+      <button class="nav-btn" onclick="switchTab('tab-regs',this)">📋 NOTIFICAR CONFIDENTE</button>
+      <button class="nav-btn" onclick="switchTab('tab-encontros',this)">📋 INSCRITOS</button>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
       <button class="sync-btn" onclick="loadAdminData(true)">🔄 SINCRONIZAR</button>
@@ -580,7 +580,7 @@ body{font-family:'Barlow',sans-serif;background:var(--dark);color:var(--text);mi
 
 <script>
 const SHEETS_URL='https://script.google.com/macros/s/AKfycbzgrtrIEQJ5Q2wIrhvJnTsNx1w5nJosmir6Kddb6-0RdM0ezM3JuxdnZEKHzKDBJTcMmg/exec';
-let mentors=[],pending=[],registrations=[],participantes=[],presencas=[];
+let mentors=[],pending=[],registrations=[],participantes=[],presencas=[],adminMentors=[];
 let currentId=null,partDadosCarregados=null,partSexo='',confSexo='',photoBase64Conf='';
 let _adminToken=null,_facToken=null;
 
@@ -607,7 +607,10 @@ async function loadAdminData(showMsg){
     const json=JSON.parse(text.replace(/"photo":"data:[^"]{500,}"/g,'"photo":"__B64__"'));
     if(json.status==='error'){logout();return;}
     if(Array.isArray(json.mentors))       mentors=json.mentors;
-    if(Array.isArray(json.allMentors))    pending=json.allMentors.filter(m=>m.status==='pendente');
+    if(Array.isArray(json.allMentors)){
+      pending=json.allMentors.filter(m=>m.status==='pendente');
+      adminMentors=json.allMentors.filter(m=>m.status==='aprovado'||m.status==='inativo').sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+    }
     if(Array.isArray(json.registrations)) registrations=json.registrations;
     if(Array.isArray(json.participantes)) participantes=json.participantes;
     if(Array.isArray(json.presencas))     presencas=json.presencas;
@@ -775,7 +778,7 @@ async function notifyConfidente(regId){
 
 function renderPublic(q){
   q=q!==undefined?q:document.getElementById('search-input').value;
-  const list=(q?mentors.filter(m=>m.name.toLowerCase().includes(q.toLowerCase())):mentors).filter(m=>m.status!=='inativo');
+  const list=(q?mentors.filter(m=>m.name.toLowerCase().includes(q.toLowerCase())):mentors).filter(m=>m.status!=='inativo').sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
   const grid=document.getElementById('cards-grid');
   document.getElementById('count-pill').textContent=list.length+' CONFIDENTE'+(list.length!==1?'S':'');
   if(list.length===0){grid.innerHTML='';const e=document.createElement('div');e.className='empty-state';e.innerHTML='<div class="empty-icon">'+(q?'🔍':'🎯')+'</div>';const p=document.createElement('p');p.textContent=q?'Nenhum confidente encontrado para "'+q+'".':'Nenhum confidente disponível ainda.';e.appendChild(p);grid.appendChild(e);return;}
@@ -811,6 +814,7 @@ function renderAdmin(){
   document.getElementById('pending-count-badge').textContent=pending.length>0?'('+pending.length+')':'';
 
   const pendingEl=document.getElementById('pending-list');pendingEl.innerHTML='';
+  pending.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
   if(pending.length===0){const p=document.createElement('p');p.style.cssText='color:var(--text-muted);font-size:14px;';p.textContent='Nenhum cadastro pendente. ✅';pendingEl.appendChild(p);}
   else{pending.forEach(m=>{
     const item=document.createElement('div');item.className='pending-item';
@@ -826,8 +830,9 @@ function renderAdmin(){
   });}
 
   const listEl=document.getElementById('admin-list');listEl.innerHTML='';
-  if(mentors.length===0){const p=document.createElement('p');p.style.cssText='color:var(--text-muted);font-size:14px;';p.textContent='Nenhum confidente aprovado ainda.';listEl.appendChild(p);}
-  else{mentors.forEach(m=>{
+  const confListSrc = adminMentors.length > 0 ? adminMentors : mentors;
+  if(confListSrc.length===0){const p=document.createElement('p');p.style.cssText='color:var(--text-muted);font-size:14px;';p.textContent='Nenhum confidente aprovado ainda.';listEl.appendChild(p);}
+  else{confListSrc.forEach(m=>{
     const isAtivo = m.status !== 'inativo';
     const item=document.createElement('div');
     item.className='admin-conf-item';
@@ -851,7 +856,7 @@ function renderAdmin(){
 
   const tbody=document.getElementById('regs-tbody');tbody.innerHTML='';
   if(registrations.length===0){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=7;td.style.cssText='text-align:center;color:var(--text-muted);padding:40px;';td.textContent='Nenhuma inscrição ainda.';tr.appendChild(td);tbody.appendChild(tr);}
-  else{[...registrations].reverse().forEach(r=>{
+  else{[...registrations].sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR')).forEach(r=>{
     const tr=document.createElement('tr');
     // Col Data
     const tdDate=document.createElement('td');tdDate.textContent=fmtDate(r.date);tr.appendChild(tdDate);
@@ -1287,7 +1292,7 @@ var _editConfSavedFn = abrirEditConf;
 
 // Override abrirEditConf to include status toggle
 function abrirEditConf(mentorId) {
-  const allM = [...mentors, ...pending];
+  const allM = adminMentors.length > 0 ? adminMentors : [...mentors, ...pending];
   const m = allM.find(x => x.id === mentorId);
   if (!m) return;
   _ecDados = m;
