@@ -558,25 +558,19 @@ body{font-family:'Barlow',sans-serif;background:var(--dark);color:var(--text);mi
       <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:3px;color:var(--orange);margin-bottom:4px;">// PRESENÇA NA PARTILHA</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;" id="pres-data-display"></div>
     </div>
-    <div style="position:relative;background:#000;border-radius:12px;overflow:hidden;margin-bottom:20px;aspect-ratio:4/3;">
+    <div style="position:relative;background:#000;border-radius:12px;overflow:hidden;margin-bottom:20px;aspect-ratio:4/3;cursor:crosshair;" onclick="tapToFocus(event)">
       <video id="pres-video" style="width:100%;height:100%;object-fit:cover;" autoplay playsinline muted></video>
       <canvas id="pres-canvas" style="display:none;"></canvas>
       <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
-        <div style="width:200px;height:200px;border:3px solid var(--orange);border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,0.4);"></div>
+        <div style="width:200px;height:200px;border:3px solid var(--orange);border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,0.4);position:relative;">
+          <div style="position:absolute;top:-28px;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.6);">TOQUE PARA FOCAR</div>
+        </div>
       </div>
       <div id="pres-scan-status" style="position:absolute;bottom:12px;left:0;right:0;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;color:var(--white);text-shadow:0 1px 4px rgba(0,0,0,0.8);">APONTE PARA O QR CODE</div>
     </div>
-    <div class="admin-card" style="margin-bottom:16px;">
-      <div class="admin-card-title" style="display:flex;align-items:center;justify-content:space-between;"><span>PARTICIPANTES LIDOS</span><span id="pres-count" style="font-size:28px;color:var(--orange);">0</span></div>
-      <div id="pres-lista" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;"><p style="color:var(--text-muted);font-size:13px;">Nenhum QR Code lido ainda.</p></div>
-    </div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;">
-      <button class="btn-primary" style="flex:1;padding:14px;" onclick="enviarPresencas()">✅ ENVIAR PRESENÇAS (<span id="pres-count-btn">0</span>)</button>
-      <button class="btn-primary" onclick="reiniciarScanner()" style="flex:1;padding:14px;background:transparent;border:2px solid var(--border);color:var(--text-muted);">🔄 REINICIAR</button>
-    </div>
 
     <!-- ENTRADA MANUAL -->
-    <div style="margin-top:12px;">
+    <div style="margin-bottom:16px;">
       <button onclick="toggleManualInput()" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:4px;padding:11px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--orange)';this.style.color='var(--orange)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">
         ⌨️ DIGITAR CÓDIGO MANUALMENTE
       </button>
@@ -594,6 +588,16 @@ body{font-family:'Barlow',sans-serif;background:var(--dark);color:var(--text);mi
         <div id="manual-input-error" style="display:none;margin-top:8px;color:#FF6B6B;font-size:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;">⚠️ CÓDIGO INVÁLIDO — USE O FORMATO PART-XXXX</div>
       </div>
     </div>
+    <div class="admin-card" style="margin-bottom:16px;">
+      <div class="admin-card-title" style="display:flex;align-items:center;justify-content:space-between;"><span>PARTICIPANTES LIDOS</span><span id="pres-count" style="font-size:28px;color:var(--orange);">0</span></div>
+      <div id="pres-lista" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;"><p style="color:var(--text-muted);font-size:13px;">Nenhum QR Code lido ainda.</p></div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <button class="btn-primary" style="flex:1;padding:14px;" onclick="enviarPresencas()">✅ ENVIAR PRESENÇAS (<span id="pres-count-btn">0</span>)</button>
+      <button class="btn-primary" onclick="reiniciarScanner()" style="flex:1;padding:14px;background:transparent;border:2px solid var(--border);color:var(--text-muted);">🔄 REINICIAR</button>
+    </div>
+
+
     <div id="pres-enviado" style="display:none;"></div>
   </div>
 </div>
@@ -993,7 +997,7 @@ async function submitParticipante(){
     document.getElementById('part-form-area').style.display='none';document.getElementById('part-result-area').style.display='block';
     document.getElementById('part-result-nome').textContent=nome.toUpperCase();document.getElementById('part-result-codigo').textContent=codigo;
     document.getElementById('qr-container').innerHTML='';
-    if(window.QRCode){new QRCode(document.getElementById('qr-container'),{text:codigo,width:180,height:180,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});}
+    if(window.QRCode){new QRCode(document.getElementById('qr-container'),{text:codigo,width:220,height:220,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
   }catch(e){showToast('⚠️ ERRO AO CADASTRAR.');}
   btn.disabled=false;btn.textContent='✅ REALIZAR CADASTRO';
 }
@@ -1063,17 +1067,90 @@ async function facilLogin(){
 }
 
 async function iniciarCamera(){
-  try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});presVideoStream=s;const v=document.getElementById('pres-video');v.srcObject=s;v.onloadedmetadata=()=>{v.play();presScanning=true;scanLoop();};}
-  catch(e){const st=document.getElementById('pres-scan-status');st.textContent='ERRO: CÂMERA NÃO DISPONÍVEL';st.style.color='#FF6B6B';}
+  try{
+    const constraints={
+      video:{
+        facingMode:'environment',
+        width:{ideal:1280},
+        height:{ideal:720},
+        focusMode:'continuous'
+      },
+      audio:false
+    };
+    var s;
+    try{ s=await navigator.mediaDevices.getUserMedia(constraints); }
+    catch(e2){ s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false}); }
+    presVideoStream=s;
+    const v=document.getElementById('pres-video');
+    v.srcObject=s;
+    v.onloadedmetadata=()=>{
+      v.play();
+      // Apply continuous autofocus
+      var track=s.getVideoTracks()[0];
+      if(track&&track.applyConstraints){
+        try{track.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}
+      }
+      presScanning=true;
+      scanLoop();
+    };
+  }
+  catch(e){
+    const st=document.getElementById('pres-scan-status');
+    st.textContent='ERRO: CÂMERA NÃO DISPONÍVEL';
+    st.style.color='#FF6B6B';
+  }
 }
 
 function scanLoop(){
   if(!presScanning)return;
   const v=document.getElementById('pres-video'),c=document.getElementById('pres-canvas');
-  if(v.readyState===v.HAVE_ENOUGH_DATA){c.width=v.videoWidth;c.height=v.videoHeight;const ctx=c.getContext('2d');ctx.drawImage(v,0,0,c.width,c.height);
-    if(window.jsQR){const code=jsQR(ctx.getImageData(0,0,c.width,c.height).data,c.width,c.height,{inversionAttempts:'dontInvert'});
-      if(code&&code.data){const val=code.data.trim().toUpperCase();if(/^PART-[A-Z0-9]{4}$/.test(val))adicionarLido(val);}}}
+  if(v.readyState===v.HAVE_ENOUGH_DATA){
+    c.width=v.videoWidth;c.height=v.videoHeight;
+    const ctx=c.getContext('2d');
+    ctx.drawImage(v,0,0,c.width,c.height);
+    if(window.jsQR){
+      // Tenta leitura normal
+      var imgData=ctx.getImageData(0,0,c.width,c.height);
+      var code=jsQR(imgData.data,imgData.width,imgData.height,{inversionAttempts:'attemptBoth'});
+      // Se não achou, tenta na região central (crop)
+      if(!code){
+        var cx=Math.floor(c.width*0.15),cy=Math.floor(c.height*0.15);
+        var cw=Math.floor(c.width*0.7),ch=Math.floor(c.height*0.7);
+        var imgCenter=ctx.getImageData(cx,cy,cw,ch);
+        code=jsQR(imgCenter.data,cw,ch,{inversionAttempts:'attemptBoth'});
+      }
+      if(code&&code.data){
+        var val=code.data.trim().toUpperCase();
+        if(/^PART-[A-Z0-9]{4}$/.test(val))adicionarLido(val);
+      }
+    }
+  }
   presAnimFrame=requestAnimationFrame(scanLoop);
+}
+
+function tapToFocus(e){
+  if(!presVideoStream)return;
+  var track=presVideoStream.getVideoTracks()[0];
+  if(!track)return;
+  var caps=track.getCapabilities?track.getCapabilities():{};
+  // Visual feedback
+  var wrap=e.currentTarget;
+  var ripple=document.createElement('div');
+  var rect=wrap.getBoundingClientRect();
+  var x=e.clientX-rect.left, y=e.clientY-rect.top;
+  ripple.style.cssText='position:absolute;width:60px;height:60px;border:3px solid var(--orange);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%) scale(0);transition:all 0.4s ease;left:'+x+'px;top:'+y+'px;';
+  wrap.appendChild(ripple);
+  setTimeout(()=>{ripple.style.transform='translate(-50%,-50%) scale(1)';ripple.style.opacity='0';},10);
+  setTimeout(()=>{if(ripple.parentNode)ripple.parentNode.removeChild(ripple);},500);
+  // Try to focus at tap point
+  if(caps.focusMode&&caps.focusMode.includes('manual')){
+    try{
+      var pw=e.clientX/rect.width, ph=e.clientY/rect.height;
+      track.applyConstraints({advanced:[{focusMode:'manual',focusDistance:caps.focusDistance?caps.focusDistance.min:0}]});
+    }catch(err){}
+  } else if(caps.focusMode&&caps.focusMode.includes('single-shot')){
+    try{track.applyConstraints({advanced:[{focusMode:'single-shot'}]});}catch(err){}
+  }
 }
 
 function adicionarLido(codigo){
