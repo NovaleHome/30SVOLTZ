@@ -775,7 +775,7 @@ async function notifyConfidente(regId){
 
 function renderPublic(q){
   q=q!==undefined?q:document.getElementById('search-input').value;
-  const list=q?mentors.filter(m=>m.name.toLowerCase().includes(q.toLowerCase())):mentors;
+  const list=(q?mentors.filter(m=>m.name.toLowerCase().includes(q.toLowerCase())):mentors).filter(m=>m.status!=='inativo');
   const grid=document.getElementById('cards-grid');
   document.getElementById('count-pill').textContent=list.length+' CONFIDENTE'+(list.length!==1?'S':'');
   if(list.length===0){grid.innerHTML='';const e=document.createElement('div');e.className='empty-state';e.innerHTML='<div class="empty-icon">'+(q?'🔍':'🎯')+'</div>';const p=document.createElement('p');p.textContent=q?'Nenhum confidente encontrado para "'+q+'".':'Nenhum confidente disponível ainda.';e.appendChild(p);grid.appendChild(e);return;}
@@ -828,22 +828,42 @@ function renderAdmin(){
   const listEl=document.getElementById('admin-list');listEl.innerHTML='';
   if(mentors.length===0){const p=document.createElement('p');p.style.cssText='color:var(--text-muted);font-size:14px;';p.textContent='Nenhum confidente aprovado ainda.';listEl.appendChild(p);}
   else{mentors.forEach(m=>{
-    const item=document.createElement('div');item.className='admin-conf-item';
+    const isAtivo = m.status !== 'inativo';
+    const item=document.createElement('div');
+    item.className='admin-conf-item';
+    item.style.cursor='pointer';
+    item.style.opacity = isAtivo ? '1' : '0.55';
+    item.title = 'Clique para editar';
+    item.addEventListener('click', ()=>abrirEditConf(m.id));
     const img=document.createElement('img');img.src=m.photo||avatar(m.name,m.sexo);img.onerror=()=>{img.src=avatar(m.name,m.sexo);};
     const info=document.createElement('div');info.className='aci-info';
+    const nameRow=document.createElement('div');nameRow.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:2px;';
     const name=document.createElement('div');name.className='aci-name';name.textContent=m.name;
+    const badge=document.createElement('span');
+    badge.style.cssText='font-family:"Barlow Condensed",sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;padding:2px 8px;border-radius:3px;'+(isAtivo?'background:rgba(76,175,80,0.15);color:#81C784;border:1px solid rgba(76,175,80,0.3);':'background:rgba(229,57,53,0.15);color:#FF6B6B;border:1px solid rgba(229,57,53,0.3);');
+    badge.textContent = isAtivo ? 'ATIVO' : 'INATIVO';
+    nameRow.appendChild(name); nameRow.appendChild(badge);
     const meta=document.createElement('div');meta.className='aci-meta';meta.textContent='📱 '+m.whatsapp+' | 🎯 '+(m.inscritos||0)+'/'+m.vagas+' | '+((m.inscritos||0)>=m.vagas?'🔴 LOTADO':'🟢 DISPONÍVEL')+' | 🔄 '+(m.ciclos||0)+' ciclos';
-    info.appendChild(name);info.appendChild(meta);
-    const actions=document.createElement('div');actions.className='aci-actions';
-    const btnD=document.createElement('button');btnD.className='btn-icon del';btnD.textContent='🗑️';btnD.addEventListener('click',()=>deleteConfidente(m.id));
-    actions.appendChild(btnD);item.appendChild(img);item.appendChild(info);item.appendChild(actions);listEl.appendChild(item);
+    info.appendChild(nameRow);info.appendChild(meta);
+    const editIcon=document.createElement('div');editIcon.style.cssText='color:var(--text-muted);font-size:18px;padding:4px 8px;flex-shrink:0;';editIcon.textContent='✏️';
+    item.appendChild(img);item.appendChild(info);item.appendChild(editIcon);listEl.appendChild(item);
   });}
 
   const tbody=document.getElementById('regs-tbody');tbody.innerHTML='';
   if(registrations.length===0){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=7;td.style.cssText='text-align:center;color:var(--text-muted);padding:40px;';td.textContent='Nenhuma inscrição ainda.';tr.appendChild(td);tbody.appendChild(tr);}
   else{[...registrations].reverse().forEach(r=>{
     const tr=document.createElement('tr');
-    [fmtDate(r.date),r.nome,r.email,r.sexo==='M'?'Masc':'Fem',r.telefone,r.mentorName].forEach(val=>{const td=document.createElement('td');td.textContent=val;tr.appendChild(td);});
+    // Col Data
+    const tdDate=document.createElement('td');tdDate.textContent=fmtDate(r.date);tr.appendChild(tdDate);
+    // Col Nome — clicável abre edição do inscrito via PART-XXXX
+    const tdNome=document.createElement('td');
+    const nomeLink=document.createElement('span');
+    nomeLink.textContent=r.nome;
+    nomeLink.style.cssText='color:var(--orange-light);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-weight:bold;';
+    nomeLink.addEventListener('click',()=>abrirEditInscrito(r));
+    tdNome.appendChild(nomeLink);tr.appendChild(tdNome);
+    // Demais colunas
+    [r.email,r.sexo==='M'?'Masc':'Fem',r.telefone,r.mentorName].forEach(val=>{const td=document.createElement('td');td.textContent=val;tr.appendChild(td);});
     const tdN=document.createElement('td');
     if(r.notified){
         const wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-direction:column;gap:4px;';
@@ -893,7 +913,17 @@ function renderAdmin(){
     const tdM=document.createElement('td');
     if(reg&&reg.datasMemorias){const s=document.createElement('span');s.style.cssText='color:#81C784;font-size:12px;font-weight:700;';s.textContent='✅ '+fmtDate(reg.datasMemorias);tdM.appendChild(s);}
     else{const s=document.createElement('span');s.style.cssText='color:var(--text-muted);font-size:12px;';s.textContent='Não registrado';tdM.appendChild(s);}
-    [tdP,tdE,tdC,tdA,tdEc,tdD,tdPr,tdM].forEach(td=>tr.appendChild(td));etbody.appendChild(tr);
+      // Botão cancelar conexão
+      const tdAc=document.createElement('td');tdAc.style.whiteSpace='nowrap';
+      if(reg){
+        const btnDC=document.createElement('button');
+        btnDC.style.cssText='background:rgba(229,57,53,0.1);border:1px solid rgba(229,57,53,0.4);color:#FF6B6B;border-radius:4px;padding:5px 10px;font-family:"Barlow Condensed",sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;white-space:nowrap;';
+        btnDC.textContent='⛔ CANCELAR';
+        btnDC.title='Cancelar conexão com confidente';
+        btnDC.addEventListener('click',()=>abrirDeleteConexao(reg.id,reg.mentorId,pc,p.nome,reg.mentorName));
+        tdAc.appendChild(btnDC);
+      }
+      [tdP,tdE,tdC,tdA,tdEc,tdD,tdPr,tdM,tdAc].forEach(td=>tr.appendChild(td));etbody.appendChild(tr);
   });}
 }
 
@@ -1202,6 +1232,18 @@ function confirmarEditConf() {
   document.getElementById('confirm-edit-conf-1').classList.add('open');
 }
 
+function toggleStatusConf() {
+  const btn = document.getElementById('ec-status-btn');
+  const cur = btn.dataset.current;
+  if (cur === 'aprovado') {
+    btn.dataset.current = 'inativo';
+    btn.textContent = '🔴 INATIVO — clique para ATIVAR';
+  } else {
+    btn.dataset.current = 'aprovado';
+    btn.textContent = '🟢 ATIVO — clique para INATIVAR';
+  }
+}
+
 async function salvarEditConf() {
   const id      = document.getElementById('ec-id').value;
   const nome    = document.getElementById('ec-nome').value.trim();
@@ -1209,8 +1251,9 @@ async function salvarEditConf() {
   const vagas   = parseInt(document.getElementById('ec-vagas').value) || 1;
   const disc    = document.getElementById('ec-disc').value.trim();
   const desc    = document.getElementById('ec-desc').value.trim();
+  const status  = document.getElementById('ec-status-btn').dataset.current;
   try {
-    await postAdm({ action:'editConfidente', id, nome, whatsapp:tel, vagas, discipulador:disc, desc, sexo:ecSexo });
+    await postAdm({ action:'editConfidente', id, nome, whatsapp:tel, vagas, discipulador:disc, desc, sexo:ecSexo, status });
     await loadAdminData(false);
     showToast('✅ CONFIDENTE ATUALIZADO!');
   } catch(e) { showToast('⚠️ Erro ao salvar.'); }
@@ -1235,6 +1278,85 @@ async function executarDeleteConexao() {
     await loadAdminData(false);
     showToast('✅ CONEXÃO EXCLUÍDA — VAGA LIBERADA!');
   } catch(e) { showToast('⚠️ Erro ao excluir. Tente novamente.'); }
+}
+
+
+// ════ STATUS CONFIDENTE (Ativo/Inativo) ════
+// Added to abrirEditConf — include status field
+var _editConfSavedFn = abrirEditConf;
+
+// Override abrirEditConf to include status toggle
+function abrirEditConf(mentorId) {
+  const allM = [...mentors, ...pending];
+  const m = allM.find(x => x.id === mentorId);
+  if (!m) return;
+  _ecDados = m;
+  ecSexo = m.sexo || '';
+  document.getElementById('ec-id').value      = m.id;
+  document.getElementById('ec-titulo').textContent = m.name;
+  document.getElementById('ec-nome').value    = m.name || '';
+  document.getElementById('ec-tel').value     = m.whatsapp || '';
+  document.getElementById('ec-vagas').value   = m.vagas || 1;
+  document.getElementById('ec-disc').value    = m.discipulador || '';
+  document.getElementById('ec-desc').value    = m.desc || '';
+  document.getElementById('ec-sex-M').className = 'sex-opt' + (ecSexo==='M'?' selected-M':'');
+  document.getElementById('ec-sex-F').className = 'sex-opt' + (ecSexo==='F'?' selected-F':'');
+  // Status toggle
+  var statusEl = document.getElementById('ec-status-wrap');
+  if (statusEl) {
+    const isAtivo = m.status !== 'inativo';
+    document.getElementById('ec-status-btn').textContent = isAtivo ? '🟢 ATIVO — clique para INATIVAR' : '🔴 INATIVO — clique para ATIVAR';
+    document.getElementById('ec-status-btn').dataset.current = isAtivo ? 'aprovado' : 'inativo';
+  }
+  document.getElementById('edit-conf-modal').classList.add('open');
+}
+
+// ════ EDITAR INSCRITO (via aba Inscrições) ════
+var eiSexo = '';
+var _eiReg = null;
+
+function abrirEditInscrito(reg) {
+  _eiReg = reg;
+  // Try to find participante data for full fields
+  const p = participantes.find(x => (x.codigo||'').toUpperCase() === (reg.codigoPart||'').toUpperCase());
+  eiSexo = p ? (p.sexo || reg.sexo || '') : (reg.sexo || '');
+  document.getElementById('ei-regid').value   = reg.id;
+  document.getElementById('ei-partid').value  = p ? p.id : '';
+  document.getElementById('ei-titulo').textContent = reg.nome;
+  document.getElementById('ei-codigo').textContent = reg.codigoPart || '—';
+  document.getElementById('ei-nome').value    = reg.nome || '';
+  document.getElementById('ei-tel').value     = p ? (p.telefone||reg.telefone||'') : (reg.telefone||'');
+  document.getElementById('ei-email').value   = p ? (p.email||reg.email||'') : (reg.email||'');
+  document.getElementById('ei-nasc').value    = p && p.nascimento ? String(p.nascimento).slice(0,10) : '';
+  document.getElementById('ei-cpf').value     = p ? (p.cpf||'') : '';
+  document.getElementById('ei-eklesia').value = p ? (p.eklesia||'') : '';
+  document.getElementById('ei-sex-M').className = 'sex-opt' + (eiSexo==='M'?' selected-M':'');
+  document.getElementById('ei-sex-F').className = 'sex-opt' + (eiSexo==='F'?' selected-F':'');
+  document.getElementById('edit-inscrito-modal').classList.add('open');
+}
+
+function confirmarEditInscrito() {
+  if (!document.getElementById('ei-nome').value.trim()) { showToast('⚠️ NOME É OBRIGATÓRIO'); return; }
+  closeModal('edit-inscrito-modal');
+  document.getElementById('confirm-edit-ins-1').classList.add('open');
+}
+
+async function salvarEditInscrito() {
+  const partId  = document.getElementById('ei-partid').value;
+  const nome    = document.getElementById('ei-nome').value.trim();
+  const tel     = document.getElementById('ei-tel').value.replace(/\D/g,'');
+  const email   = document.getElementById('ei-email').value.trim();
+  const nasc    = document.getElementById('ei-nasc').value;
+  const cpf     = document.getElementById('ei-cpf').value.replace(/\D/g,'');
+  const eklesia = document.getElementById('ei-eklesia').value.trim();
+  try {
+    // Update participante if found
+    if (partId) {
+      await postAdm({ action:'editParticipante', id:partId, nome, telefone:tel, email, nascimento:nasc, cpf, eklesia, sexo:eiSexo });
+    }
+    await loadAdminData(false);
+    showToast('✅ DADOS ATUALIZADOS!');
+  } catch(e) { showToast('⚠️ Erro ao salvar.'); }
 }
 
 function fmtDate(d){if(!d)return'—';try{const dt=new Date(d);if(isNaN(dt.getTime()))return'—';return dt.toLocaleDateString('pt-BR')+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){return'—';}}
@@ -1511,6 +1633,11 @@ function voltarRegras(){
       </div>
     </div>
     <div class="form-group"><label>Descrição</label><textarea id="ec-desc" maxlength="500" rows="3"></textarea></div>
+    <!-- Status Ativo/Inativo -->
+    <div id="ec-status-wrap" style="margin-bottom:12px;">
+      <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:7px;">STATUS</label>
+      <button id="ec-status-btn" data-current="aprovado" onclick="toggleStatusConf()" style="width:100%;background:var(--dark3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:11px 14px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;text-align:left;transition:all .2s;">🟢 ATIVO — clique para INATIVAR</button>
+    </div>
     <button class="btn-primary" onclick="confirmarEditConf()">💾 SALVAR ALTERAÇÕES</button>
   </div>
 </div>
@@ -1567,6 +1694,68 @@ function voltarRegras(){
     <div style="display:flex;gap:12px;">
       <button class="btn-primary" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);" onclick="closeModal('confirm-del-con-2')">CANCELAR</button>
       <button class="btn-primary" style="background:var(--danger);" onclick="closeModal('confirm-del-con-2');executarDeleteConexao()">🗑️ EXCLUIR DEFINITIVAMENTE</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL EDITAR INSCRITO (via aba Inscrições) -->
+<div class="modal-overlay" id="edit-inscrito-modal">
+  <div class="modal" style="max-width:560px;">
+    <button class="modal-close" onclick="closeModal('edit-inscrito-modal')">✕</button>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:3px;color:var(--orange);margin-bottom:6px;">// INSCRITO</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:4px;" id="ei-titulo"></div>
+    <div style="font-size:12px;color:var(--text-muted);font-family:monospace;letter-spacing:2px;margin-bottom:20px;" id="ei-codigo"></div>
+    <input type="hidden" id="ei-regid">
+    <input type="hidden" id="ei-partid">
+    <div style="background:var(--dark3);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:6px;padding:14px 16px;margin-bottom:16px;font-size:13px;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--orange);margin-bottom:10px;">DADOS DO PARTICIPANTE</div>
+      <div class="form-row">
+        <div class="form-group"><label>Nome *</label><input type="text" id="ei-nome" maxlength="100"></div>
+        <div class="form-group"><label>Telefone</label><input type="text" id="ei-tel" maxlength="15" oninput="applyPhoneMask(this)"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Email</label><input type="email" id="ei-email" maxlength="150"></div>
+        <div class="form-group"><label>Nascimento</label><input type="date" id="ei-nasc" style="color-scheme:dark;"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>CPF</label><input type="text" id="ei-cpf" maxlength="14" oninput="applyCpfMask(this)"></div>
+        <div class="form-group"><label>Eklesia</label><input type="text" id="ei-eklesia" maxlength="50"></div>
+      </div>
+      <div class="form-group">
+        <label>Sexo</label>
+        <div class="sex-options">
+          <label class="sex-opt" id="ei-sex-M" onclick="eiSexo='M';document.getElementById('ei-sex-M').className='sex-opt selected-M';document.getElementById('ei-sex-F').className='sex-opt';"><input type="radio" name="ei-sexo"> ♂ MASCULINO</label>
+          <label class="sex-opt" id="ei-sex-F" onclick="eiSexo='F';document.getElementById('ei-sex-F').className='sex-opt selected-F';document.getElementById('ei-sex-M').className='sex-opt';"><input type="radio" name="ei-sexo"> ♀ FEMININO</label>
+        </div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="confirmarEditInscrito()">💾 SALVAR ALTERAÇÕES</button>
+  </div>
+</div>
+
+<!-- CONFIRM EDITAR INSCRITO 1 -->
+<div class="modal-overlay" id="confirm-edit-ins-1">
+  <div class="modal" style="max-width:420px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:16px;">✏️</div>
+    <h2 style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:12px;">CONFIRMAR ALTERAÇÃO?</h2>
+    <p style="color:var(--text-muted);line-height:1.7;margin-bottom:24px;">Você está prestes a alterar os dados do participante inscrito. Deseja continuar?</p>
+    <div style="display:flex;gap:12px;">
+      <button class="btn-primary" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);" onclick="closeModal('confirm-edit-ins-1')">CANCELAR</button>
+      <button class="btn-primary" onclick="closeModal('confirm-edit-ins-1');document.getElementById('confirm-edit-ins-2').classList.add('open')">SIM, CONTINUAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM EDITAR INSCRITO 2 -->
+<div class="modal-overlay" id="confirm-edit-ins-2">
+  <div class="modal" style="max-width:420px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+    <h2 style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:12px;">TEM CERTEZA?</h2>
+    <p style="color:var(--text-muted);line-height:1.7;margin-bottom:24px;">Esta ação irá <strong style="color:var(--orange);">substituir permanentemente</strong> os dados. Confirma?</p>
+    <div style="display:flex;gap:12px;">
+      <button class="btn-primary" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);" onclick="closeModal('confirm-edit-ins-2')">CANCELAR</button>
+      <button class="btn-primary" onclick="closeModal('confirm-edit-ins-2');salvarEditInscrito()">✅ SIM, SALVAR</button>
     </div>
   </div>
 </div>
